@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width">
+	<title>tab bar mockup</title>
+</head>
+<body>
+	<!-- Basically the same as tab bar v4, but made larger for comfortable use on phones -->
+	<div id="main" style="display: flex;width: 100%">
+		<button class="navigation" id="backButton"><!-- This Source Code Form is subject to the terms of the Mozilla Public
+	   - License, v. 2.0. If a copy of the MPL was not distributed with this
+	   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="context-fill" fill-opacity="context-fill-opacity">
+			  <path d="M14.375 8 3.048 8l4.308-4.308a.626.626 0 0 0-.885-.885L1 8.281l0 .689 5.472 5.473a.623.623 0 0 0 .884 0 .628.628 0 0 0 0-.885L3.048 9.25l11.327 0a.625.625 0 0 0 0-1.25z"/>
+			</svg>
+		</button>
+
+		<button class="navigation" id="forwardButton"><!-- This Source Code Form is subject to the terms of the Mozilla Public
+		   - License, v. 2.0. If a copy of the MPL was not distributed with this
+		   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="context-fill" fill-opacity="context-fill-opacity">
+		  <path d="m1.625 8 11.327 0-4.308-4.308a.626.626 0 0 1 .885-.885L15 8.281l0 .689-5.472 5.473a.623.623 0 0 1-.884 0 .628.628 0 0 1 0-.885l4.308-4.308-11.327 0a.625.625 0 0 1 0-1.25z"/>
+		</svg>
+		</button>
+
+		<button class="navigation" id="reloadButton">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="context-fill" fill-opacity="context-fill-opacity">
+			  <path d="M10.707 6 14.7 6l.3-.3 0-3.993a.5.5 0 0 0-.854-.354l-1.459 1.459A6.95 6.95 0 0 0 8 1C4.141 1 1 4.141 1 8s3.141 7 7 7a6.97 6.97 0 0 0 6.968-6.322.626.626 0 0 0-.562-.682.635.635 0 0 0-.682.562A5.726 5.726 0 0 1 8 13.75c-3.171 0-5.75-2.579-5.75-5.75S4.829 2.25 8 2.25a5.71 5.71 0 0 1 3.805 1.445l-1.451 1.451a.5.5 0 0 0 .353.854z"/>
+			</svg>
+		</button>
+	<div id="tabcontainer">
+		<!-- <button class="tab1">Text</button> -->
+	</div>
+	<div>
+		<button id="plus">
+		<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill-opacity="context-fill-opacity">
+	  <circle fill="context-stroke" cx="7.6" cy="7.6" r="7.5"/>
+	  <path fill="context-fill" d="M11 8.2H8.6l-.4.4V11c0 .3-.3.6-.6.6S7 11.3 7 11V8.6l-.3-.4H4.2c-.3 0-.6-.2-.6-.6s.3-.6.6-.6h2.4l.4-.3V4.2c0-.3.3-.6.6-.6s.6.3.6.6v2.4l.4.4H11c.3 0 .6.3.6.6s-.3.6-.6.6z"/>
+	</svg>
+	</button>
+	</div>
+	
+</div>
+
+
+	<style type="text/css">
+
+		div{
+			border-radius: 4px;
+		}
+		a{
+			color: black;
+		}
+		.tab1{
+			display: inline-block;
+			height: 50px;
+			min-width: 56px;
+			border: 1px solid #ddd;
+		}
+		.tab{
+			display: inline-block;
+			/*height: 45px;*/
+			background: #e9e9ed;
+			color: black;
+			font-family: "MS Shell Dlg 2",Tahoma, serif;
+			font-size: 0.9rem;
+			padding: 1px;
+			margin-right: 4px; 
+			min-width: 65px;
+			max-width: 12em; /*max-width: 20vw; */
+			border: 1px solid #ddd;
+			border-radius: 0px;
+		}
+		#tabcontainer{
+			/*overflow-x: scroll;*/
+			overflow-y: auto;
+		  white-space: nowrap;
+		  scrollbar-width: none;
+		  width: 99%;
+/*		    mask-image: linear-gradient(90deg,#00000057 0%, gray 2%,white 98%,#00000057);*/ /*optional*/
+		}
+		#plus{
+			margin-left: 10px;
+			margin-right: 5px;
+			width: 2rem;
+			height: 40px;
+		}
+		.navigation{
+				width: 3rem;
+				height: 36px; /*45px*/
+				margin: 4px;
+			}
+		#reloadButton{
+			margin-right: 10px;
+		}
+		#main{
+			white-space: nowrap;
+			position: fixed;
+			top: 0px;
+			left:2px;
+			box-sizing: border-box;
+			height: 45px;
+			align-items: center;
+
+		}
+		.closeButton{
+			margin: 5px;
+			margin-top: 5px;
+			margin-right: 5px;
+			margin-bottom: 5px;
+			margin-left: 5px;
+			margin-right: 0px;
+		}
+		body{
+			white-space: nowrap;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body{
+				background: #1c1b22; 
+		 		color:  #ddd;
+			}
+		 		
+		}
+	</style>
+	<script src="openNewTab6.js"></script> <!-- openNewTab5.js -->
+</body>
+</html>
