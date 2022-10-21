@@ -1,16 +1,26 @@
 {
-	"name" : "Tab bar",
-	"version": "1.0",
-	"manifest_version": 2,
+  "name" : "Tab bar",
+  "version": "1.0",
+  "manifest_version": 2,
   "web_accessible_resources": ["tab bar v6.html","openNewTab6.js"],
   "content_scripts": [
   {
     "matches": ["<all_urls>"],
-    "js": ["content.js"]
+    "js": ["content2.js"],
+    "run_at": "document_start"
   }
   ],
   "background": {
   "scripts": ["background2.js"]
   },
-  "permissions": ["<all_urls>","tabs", "webNavigation", "storage"]
+  "permissions": ["<all_urls>","tabs", "webNavigation", "storage"],
+"options_ui": {
+  "page": "Tablet UI for Firefox settings.html",
+  "browser_style": false
+},
+"browser_action": {
+  "browser_style": false,
+  "default_title": "Tablet UI for Firefox Settings",
+  "default_popup": "Tablet UI for Firefox settings.html"
+}
 }
