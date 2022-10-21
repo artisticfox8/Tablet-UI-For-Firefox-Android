@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width">
+	<title>Tablet UI for Firefox Settings</title>
+</head>
+<body>
+  <h1>Tablet UI Settings</h1>
+  <form action="" method="post">
+	<h2>Appearance</h2>
+  <div class="options">
+	<h3>View buttons:</h3>
+  <h4>In vertical (portrait) mode:</h4>
+  <div class="options">
+    <input type="checkbox" name="showBackButtonVertical" id="vehicle2" value="true">
+    <label for="vehicle2">Back button</label><br>
+    <input type="checkbox" name="showReloadButtonVertical" id="vehicle1" value="true">
+    <label for="vehicle1">Reload button</label><br>
+    <input type="checkbox" name="showForwardButtonVertical" id="vehicle3" value="true">
+    <label for="vehicle3">Forward button</label><br>
+  </div>
+  <h4>In horizontal (landscape) mode:</h4>
+	<div class="options">
+		<input type="checkbox" name="showBackButtonHorizontal" id="vehicle4" value="true">
+		<label for="vehicle4">Back button</label><br>
+		<input type="checkbox" name="showReloadButtonHorizontal" id="vehicle5" value="true">
+		<label for="vehicle5">Reload button</label><br>
+		<input type="checkbox" name="showForwardButtonHorizontal" id="vehicle6" value="true">
+		<label for="vehicle6">Forward button</label><br>
+	</div>
+  <div>
+    <h3>Tab bar:</h3>
+    <div>
+    <label style="display:inline-block;padding-right: 7px">Font size:</label>
+    <input type="number" min="5" name="fontSize" style="width: 5em" step="0.1" value="14.4" id="fontSize">
+    <label style="display:inline-block;padding-left: 7px">px</label>
+    </div>
+    <!-- <h4>Sync tab bar scroll position across tabs: </h4>
+    <div class="options">
+
+      
+        <input type="checkbox" id="vehicle7" checked value="true" name="ScrollSyncInLandscape">
+        <label for="vehicle7">In horizontal (landscape) mode: <strong>(on by default)</strong> </label><br>
+
+        <input type="checkbox" id="vehicle8" value="true" name="ScrollSyncInPortrait">
+        <label for="vehicle8">In vertical (portrait) mode </label>    
+     
+      
+    </div> -->
+    <label style="display:inline-block;padding-right: 7px">Height:</label>
+    <input type="number" min="20" name="height" style="width: 5em" value="50">
+    <label style="display:inline-block;padding-left: 7px">px</label>
+   <!--  <h4>Height</h4>
+    <div class="options">
+      <label>Set the height for the tab bar:</label>
+      <input name="height" type="number" min="20" value="50" style="width: 5em">
+      <label>px</label>
+    </div> -->
+    <h4>Place the tab bar: </h4>
+    <div class="options">
+       <input type="radio" id="B" name="place" value="bottom" checked> <!-- checked="" -->
+      <label for="B">On the bottom of the screen <strong>(recommended) </strong></label><br>
+      <input type="radio" id="2" name="place" value="top">
+      <label for="2">On the top of the screen (not recommended; breaks layout on some pages)</label><br>
+    </div>
+
+    
+  </div>
+  </div>
+
+  <h2>New tab Search Engine</h2>
+  <div class="options">
+     <input type="radio" id="Google" name="searchEngine" value="https://www.google.com"
+             checked>
+      <label for="Google">Google</label><br>
+
+      <input type="radio" id="Bing" name="searchEngine" value="https://bing.com">
+      <label for="Bing">Bing</label><br>
+
+      <input type="radio" id="DuckDuckGo" name="searchEngine" value="https://duckduckgo.com">
+      <label for="DuckDuckGo">DuckDuckGo</label><br>
+      <input type="radio" id="other" name="searchEngine" value="other">
+      <label for="other">Other:</label>
+     <!--  the type url declaration quietly fails the form submit if REGARDLESS IF other IS SELECTED AND THE URL FIELD IS NOT SELECTED and will not TELL ABOUT IT (BUG, because of e.preventDefault in form submit) => doing all URL checks in JS USING REGEX -->
+      <input id="searchEngineOther" placeholder="https://">
+
+
+  </div>
+
+ <!--  <h2>Experimental</h2>
+  <div class="options">
+    <input type="checkbox" id="vehicle9" value="Bike">
+    <label for="vehicle9">Allow automatically repositioning off-screen elements</label>
+  </div> -->
+      <input type="submit" class="button save" value="Save options"></input>
+            <label class="hidden" id="storedInStorageIndicator" style="font-weight:501;margin-left: 10px;color: green">Saved</label><br>
+       <label class="hidden" id="settingsResetIndicator" style="font-weight:501;margin-left: 10px;color: green">Reset to defaults settings</label>
+      <input type="button" class="button" id="resetSettingsr"value="Restore default options">
+</form>
+
+<div class="prompt dataNotSaved hidden">
+  <h4>Data not saved:</h4>
+  <label>Enter valid a valid URL for search engine or select a different search engine</label>
+  <div style="margin:10px;text-align: right;">
+    <button id="confirm" class="save" style="color: white;width: 5em;">OK</button>
+  </div>
+</div>
+<div class="prompt reset hidden">
+  <h4>Reset:</h4>
+  <label>Are you sure you want to reset settings? After resetting settings page reloads may be needed</label>
+  <div style="margin:10px;text-align: right;">
+    <button id="resetSettings" class="save" style="color: white;width: 5em;margin-right: 20px">Yes</button>
+    <button id="cancel">Cancel</button>
+  </div>
+</div>
+
+  	<style type="text/css">
+      .prompt{
+        position: fixed;
+        bottom: 100px;
+        background: white;
+        color: black;
+        border: 3px solid black;
+        width: 95%;
+        height: fit-content;
+        border-radius: 4px;
+      }
+      .prompt > label{
+        display: block;
+        margin: 3px;
+      }
+      .button{
+        margin-top: 30px;
+        cursor: grab;
+        border-radius: 4px;
+        min-height: 32px;
+        padding: 3px 10px;
+        /*font-weight: 600;*/
+        font-size: 1.2rem;
+        margin-right: 20px
+      }
+      .save{
+        background-color: #009fff;/* #00ddff;*/
+         border: none;
+         color: white;
+      }
+      .button:active{
+        translate: 0px 2px;
+      }
+  		.options{
+  			padding-left: 10px;
+        line-height: 1.7;
+  		}
+      input[type='checkbox'], input[type='radio']{
+        transform: scale(1.4)
+      }
+      h2{
+        border-bottom: 4px solid #0060df;
+        line-height: 1.2;
+        border-radius: 3px;
+        width: fit-content;
+      }
+      h4{
+        font-size: 1.125rem;
+        padding-left: 10px;
+        margin-bottom: 15px;
+      }
+      div h4:first-of-type{
+        margin-top: 10px
+      }
+  		button{
+  			position: sticky;
+  			bottom: 0;
+  			margin-top: 30px;
+  			font-size: 1.2rem;
+  		}
+  		body{
+  			font-family: sans-serif;
+       /* background: #d4d4e7; #f7f7f7*/
+  		}
+  		label{
+  			font-size: 1.2rem;
+  			padding: 5px;
+  		}
+      .hidden{
+        display: none;
+      }
+  		@media (prefers-color-scheme: dark) {
+			body{
+				background: #1c1b22; 
+		 		color:  #ddd;
+			}
+      .dataNotSaved{
+        color: black;
+      }
+		}
+  	</style>
+    <script src="settings.js"></script>
+</body>
+</html>
