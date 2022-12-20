@@ -17,17 +17,17 @@ document.getElementById("resetSettings").addEventListener("click",function(){
 			//set default radiobutton settings so the defaults are are displayed without a full page reload (when the checked attributes kick in), because we want to show the "Reset to default settings" text to users
 			//set default checkbox settings so they're displayed in the settings page propertly (all checkboxes being checked without using checked attribute)
 			let v = {
-  			"showBackButtonVertical": true,
+				"showBackButtonVertical": true,
 				"showReloadButtonVertical": true,
 				"showForwardButtonVertical": true,
-
 				"showBackButtonHorizontal": true,
 				"showReloadButtonHorizontal": true,
 				"showForwardButtonHorizontal": true,
 				"fontSize": "14.4",
 				"height": "50",
 				"place": "bottom",
-				"searchEngine": "https://www.google.com"
+				"searchEngine": "https://www.google.com",
+				"to": "left"
   		}
 			browser.storage.local.set(v).then(function(e){
 				document.getElementById("settingsResetIndicator").classList.remove("hidden");
@@ -38,10 +38,7 @@ document.getElementById("resetSettings").addEventListener("click",function(){
 	document.getElementsByClassName("reset")[0].classList.add("hidden");
 });
 
-// function sendSettingsChangeEvent(){
-// 	browser.runtime.sendMessage({action:"sendUpdateSettings",settings: settingsObject});
 
-// }
 
 	  //form 
 	  function saveOptions(e){
@@ -162,6 +159,9 @@ function onGot(items){
 
 					}
     			else if(type == "number"){ 
+    				elements[i].value = items[x];
+    			}
+    			else if(type == "select-one"){
     				elements[i].value = items[x];
     			}
 
