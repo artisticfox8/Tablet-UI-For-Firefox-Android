@@ -10,4 +10,7 @@ This add-on re-implements the tab bar from desktop we all love, on Android table
 5.	Under Addons, select Your own Addon collection
 6.	Paste the following for user id: 15613358  and for collection name: Android-compatible-addons-by-J
 
+![obrazek](https://user-images.githubusercontent.com/77014769/208732919-0b606e25-f41b-4af0-bae4-a9f7d4bc11bd.png)
+
+
 You can see screenshots at: https://addons.mozilla.org/en-US/firefox/addon/tablet-ui-for-firefox/
