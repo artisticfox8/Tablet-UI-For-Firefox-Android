@@ -1,5 +1,6 @@
 var tabBarPosition = "bottom";
 var tabBarHeight = "50";
+
 function load(){
 	//sometimes I get two tab bars on a page (now obvious when playing with tab bar placement (one at the top, one at the bottom)), so first check if there is an element already
 	//if there is, remove it and inject a new one
@@ -35,6 +36,7 @@ function load(){
 	// div.appendChild(iframe);
 	// document.body.appendChild(div);
 }
+
 //IDEA: move next position fixed or position sticky element using transform: translateY(50px) to solve tab bar overlapping page content
 load();
 
@@ -47,20 +49,12 @@ load();
 //So, switching to using document.body.style, which is the way to add styles in js
 //document.body.style.transform = "translateY(50px)"
 
-function handleMessages(request){
-	// if(request.action === "tabCreated"){
-	// 	alert("tabCreated")
-	// 	console.log(request);		
-	// }
-	if(request.action === "testStyleOn"){
-		//for debugging
-		console.log("receiveed2")
-		document.getElementById("iframekontejner").style.opacity = "0.5";
-		document.getElementById("iframekontejner").style.bottom = "30px";
-	}
-	if(request.action === "testStyleOff"){
-		document.getElementById("iframekontejner").style.opacity = "1";
-		document.getElementById("iframekontejner").style.bottom = "0px";
+function handleMessages(request, sender, sendResponse){
+	if(request.action == "getFaviconUrl"){ //getThatFavicon
+		let url = getFaviconURL();
+		//return url; //return didnt work here for some reason
+		//NOW WITH sendResponse IT WORKS
+		sendResponse(url);
 	}
 	if(request.action === "updateTabBarPos"){
 		 if(request.place == "top"){
@@ -105,11 +99,18 @@ function handleMessages(request){
 			//alert(request.height); //now 60, as I used window. in that setTimeout
 			tabBarHeight = request.height;
 		}
-		load();
+		//add a check if our tab bar was removed
+		//if not, reload is not needed 
+		//(to reduce unnecessary reloads on dictionary.cambridge.com)
+		//works
+		let tabBar = document.getElementById("iframekontejner");
+		if(tabBar == null){
+			load();
+		}
+		//load(); //a lot of unnecessary reloads on dictionary.cambridge.com
 	}
 	if(request.action === "translateYhackOff"){
 		console.log("received")
-		//alert("sgwrsferwrgfd")
 		document.body.style.transform = "translateY(0px)"
 		//stylesheet.disabled = true;
 	}
@@ -148,3 +149,15 @@ document.body.addEventListener("mouseenter", function(event) {
 	// event.target.style.color = "purple" //works
 	browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHackOff"});
 });
+
+function getFaviconURL(){
+	let url = ""
+	try{
+		//this is null on google.com for example
+		url = document.querySelector("link[rel*='icon']").href;
+	}catch{
+		//works on google.com
+		url = window.location.origin + "/favicon.ico";
+	}
+	return url;
+}
