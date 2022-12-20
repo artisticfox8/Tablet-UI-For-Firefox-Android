@@ -35,18 +35,6 @@
     <input type="number" min="5" name="fontSize" style="width: 5em" step="0.1" value="14.4" id="fontSize">
     <label style="display:inline-block;padding-left: 7px">px</label>
     </div>
-    <!-- <h4>Sync tab bar scroll position across tabs: </h4>
-    <div class="options">
-
-      
-        <input type="checkbox" id="vehicle7" checked value="true" name="ScrollSyncInLandscape">
-        <label for="vehicle7">In horizontal (landscape) mode: <strong>(on by default)</strong> </label><br>
-
-        <input type="checkbox" id="vehicle8" value="true" name="ScrollSyncInPortrait">
-        <label for="vehicle8">In vertical (portrait) mode </label>    
-     
-      
-    </div> -->
     <label style="display:inline-block;padding-right: 7px">Height:</label>
     <input type="number" min="20" name="height" style="width: 5em" value="50">
     <label style="display:inline-block;padding-left: 7px">px</label>
@@ -64,7 +52,16 @@
       <label for="2">On the top of the screen (not recommended; breaks layout on some pages)</label><br>
     </div>
 
-    
+    <h4 style="display:inline-block;padding-right: 7px">When closing the tab you're on </h4><br>
+    <div class="options">
+      <label>switch to the</label>
+      <select style="width:5rem" name="to">
+        <option value="left" selected>left</option>
+        <option value="right">right</option>
+        <option value="don't interfere with the browser">don't interfere with the browser</option>
+      </select>
+      <label style="display:inline-block;padding-right: 7px">tab</label>
+    </div>
   </div>
   </div>
 
@@ -87,11 +84,6 @@
 
   </div>
 
- <!--  <h2>Experimental</h2>
-  <div class="options">
-    <input type="checkbox" id="vehicle9" value="Bike">
-    <label for="vehicle9">Allow automatically repositioning off-screen elements</label>
-  </div> -->
       <input type="submit" class="button save" value="Save options"></input>
             <label class="hidden" id="storedInStorageIndicator" style="font-weight:501;margin-left: 10px;color: green">Saved</label><br>
        <label class="hidden" id="settingsResetIndicator" style="font-weight:501;margin-left: 10px;color: green">Reset to defaults settings</label>
