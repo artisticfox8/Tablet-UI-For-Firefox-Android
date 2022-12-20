@@ -1,6 +1,7 @@
+"use strict";
 var TabsObject;
 var SettingsObject;
-var newTabURL = "https://www.google.com";
+var newTabURL = "https://www.google.com"; //issue was not var vs let, but newTabUrl being overwritten to the undefined items.searchEngine property
 var sendPositionModMessageToContent = false;
 //for tabs which are loaded after the 
 var tabOrderModifications = {}; //{tabId: insertAfterId}
@@ -17,11 +18,54 @@ var debuggingTabURl = ""; //only for debugging
 var settingsTabId = 0;
 var settingsTabURL = "";
 
+var faviconCache = {}; //page host (www.google.com) : faviconUrl
+
 browser.tabs.query({active:true}).then(function(tabs){
 	let tab = tabs[0];
 	activeTabId = tab.id;
 });
-function handleMessage(request, sender, sendResponse) { //message from tab
+
+function handleGetFaviconURLResponse(request, sender, sendResponse, url){
+	var resp = sendResponse;
+	browser.tabs.sendMessage(sender.tab.id, {action: "getFaviconUrl"}).then(r =>{ //getThatFavicon //, url: request.url
+		if(url in faviconCache){
+			//without this check (icons for particular websites should only be written once, and not overwritten),
+			//the faviconCache object gets overwritten to THIS:
+			/*
+			Object { "https://www.gme.cz": "https://cs.m.wikipedia.org/static/apple-touch/wikipedia.png", 
+				"https://cs.m.wikipedia.org": "https://cs.m.wikipedia.org/static/apple-touch/wikipedia.png" }
+			*/
+			//AS A RESULT, ALL ICONS ARE WIKIPEDIA ICONS
+			//happens despite this check, but only while reloading extension without reloading browser
+		}else{
+			faviconCache[url] = r;
+			//co kdybychom to rekli ostatnim tady
+			//resp(r) na to cekat nemusi, posleme to async
+			console.log("TabsObject in handleGetFaviconURLResponse", TabsObject);
+			//lets use tabsObject for list of tab ids  (we dont have to query tabs.query, because tabsObject is updated everytime a tab is opened: using updateTabObject )
+			for (let i = 0; i < TabsObject.length; i++) {
+				let id = TabsObject[i].id;
+				//using tabCreated for this is messy, creates bugs
+				//browser.tabs.sendMessage(id, {action: "tabCreated", ID: id, faviconUrl: r});
+				//SO send a new event
+				browser.tabs.sendMessage(id, {action: "faviconUpdated", tabWhoseFaviconIsUpdated: sender.tab.id, faviconUrl: r});
+
+			}
+			console.log(url,"FAVICON URL SIIIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", r) //WORKS
+			resp(r);
+		}	
+	});
+}
+/*async*/ function handleMessage(request, sender, sendResponse) { //message from tab
+
+	if(request.action == "getFaviconURL"){
+		//https://stackoverflow.com/questions/20077487/chrome-extension-message-passing-response-not-sent
+		//https://stackoverflow.com/questions/54442175/onmessage-addlistener-sendresponse
+		//YASSSSSSS returning true after async call was the solution!
+		handleGetFaviconURLResponse(request,sender,sendResponse, request.url);
+		return true;
+
+	}
 
 	if(request.action === "phoneRotated"){
 
@@ -65,6 +109,7 @@ function handleMessage(request, sender, sendResponse) { //message from tab
 	if(request.action === "activeTabOnRightClickChangeHack"){
 		//OK, this UI hack works, it positions the new tab to the right of right clicked tab
 		//netřeba nějak resetovat, protože při dalším tab switch se activeTabId přehodí na správnou hodnotu: tohle je prostě fix pro otevírání z tab baru 
+		//no need to reset it because after the next tab switch the activeTabId is overwritten to the real value: this is just a fix for opening tabs from the tab bar
 		console.log(request.tabID);
 		
 		activeTabId = parseInt(request.tabID);
@@ -89,7 +134,6 @@ function handleMessage(request, sender, sendResponse) { //message from tab
 				}
 		});
 
-
 			//so that should be the same as .then() on this browser.tabs.update
 		browser.tabs.update(parseInt(request.tabID), {active: true}); ///request.tabID is the tab we're switching to
 
@@ -100,21 +144,29 @@ function handleMessage(request, sender, sendResponse) { //message from tab
 		//if the user clicks the adressbar on that new tab, he could navigate to a different page
 		//but the about:blank will still be open
 		//=> So, a temporary fix is to open google.com instead
+		if(newTabURL == undefined){
+			throw new Error("newTabURL is undefined wtf");
+		}
 		browser.tabs.create({url: newTabURL}); //"https://www.google.com"
 	}
 
 	if(request.action === "closeTab"){ //Add tab selected styling to tab browser will navigate to after this
+		if(request.switchToTab != ""){
+			console.log("tab switch after close tab, active tab is " + request.tabID + " switching to " + request.switchToTab);
+			browser.tabs.update(parseInt(request.switchToTab), {active: true});
+		} 	
 		let removing = browser.tabs.remove(parseInt(request.tabID));
+
 		removing.then(function(e){ // integer or integer array)
 			//add a response so other tabs know
 			browser.tabs.query({}).then(function(tabs){
 				console.log(tabs); 
 				for (var i = 0; i < tabs.length; i++) {
 					//still althought new tab query Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
-						if(parseInt(tabs[i].id) != request.tabID){
+						//if(parseInt(tabs[i].id) != request.tabID){
 							let xd= browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "tabClosed", ID: request.tabID});
 							xd.catch(err=> console.log(err));
-						}
+						//}
 						
 					}
 				});
@@ -141,8 +193,8 @@ function handleMessage(request, sender, sendResponse) { //message from tab
 	//INTERMITTENTLY NEEDED, IF storage.onUpdated doesn't fire
 	//Without it, for some reason, settings are updated only on the active tab, and not on the other loaded tabs
 	if(request.action === "sendUpdateSettings"){
-		console.log("FUCKING WERGRWEGFFFFFFFFFFFFFFR RECIIEVED OKAY")
-		//FOR SOME REASON IT TAKES LIKE FUCKING 200 ms to display
+		console.log("sendUpdateSettings request received")
+		//FOR SOME REASON IT TAKES LIKE 200 ms to display
 				browser.tabs.sendMessage(parseInt(trueActiveTabId), {action: "updateSettings", settings: request.settings})
 			browser.tabs.query({}).then(function(tabs){
 				for (var i = 0; i < tabs.length; i++) {
@@ -206,7 +258,12 @@ function handleMessage(request, sender, sendResponse) { //message from tab
 
 		//switched to using TabsObject to make it faster
 		TabsObject.adresat = sender.tab.id;
-		sendResponse(TabsObject);
+		
+		//TabsObject on Android doesn't have info about page favicons, on desktop it would have faviconUrl property of every tab in browser.tabs.query({})
+		//so adding support for favicons using an object with their urls and img tags in tab bar
+		TabsObject.favicons = faviconCache;
+		sendResponse(TabsObject); //for normal function //FALSE: TlDR: making this function async does not work, sendResponse followed by return true doesnt work, sendResponse alone doesnt work, return TabsObject doesnt work
+		//return TabsObject; //for async function
 	}
 }
 
@@ -306,12 +363,43 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 		}
 	}
 
-		updateTabObject(); //to make sure right tab titles are sent => possible perf idea to maintian a list of tabs and add changes to it to gain perfromance (right now we're querying the browser.tabs.query often, and that is like 30ms slow)
+		updateTabObject(); //to make sure right tab titles are sent => possible perf idea to maintain a list of tabs and add changes to it to gain perfromance (right now we're querying the browser.tabs.query often, and that is like 30ms slow)
 		//OK, this gets logged
 		//TODO: filter isn't supported on Android: by default browser.tabs.onUpdated reports changes of any kind: url, tab switch, status (ie if ant tab is loading), audible, etc
 	  var changedStuff = {action: "tabCreated", ID: parseInt(tabId)}
-		if("url" in changeInfo){
+		if("url" in changeInfo){ //to funguje
 			changedStuff.url = changeInfo.url;
+			//get base url (like window.location.origin)
+			//url: https://www.google.com/search?client=firefox-b-d&q=linux+pdf+editor
+			//split("/")
+			//[ "https:", "", "www.google.com", "search?client=firefox-b-d&q=linux+pdf+editor" ]
+			//base = 0, 1, 2 
+			let url = changeInfo.url.split("/")
+			//first three elements of url array
+			let base = url[0] + "//" + url[2];
+			//console.log(base) //https://www.google.com
+			//TADY SE UPDATEUJE URL OBRAZKU
+			//move this a few lines further, inside browser tabs query
+			console.log("faviconCache", faviconCache);
+			if(base in faviconCache){
+				changedStuff.iconUrl = faviconCache[base];
+			}//else{
+			// 	//A TO SE TADY NEDOIMPLEMENTOVALO
+			//TO jsem přidal do getFaviconUrl callbacku v handleGetFaviconURLResponse, ktery uz zavolany je
+			//ten posle faviconUpdated event do openNewTab.js, ze seznamu Id z TabsObject
+			// 	browser.tabs.sendMessage(tabId, {action: "getFaviconUrl"}).then(r =>{
+			// 		if(base in faviconCache){
+			// 			//kdyby se to mezitim doplnilo (v handleGetFaviconURLResponse)
+			// 		}else{
+			// 			faviconCache[base] = r;
+			// 			changedStuff.iconUrl = faviconCache[base];
+			// 			//a to už to asi bude poslaný, proto radši poslat separate event
+			// 			//to budu posilat v handleGetFaviconURLResponse (vygeneruje se tabCreated event s tim obrazkem (a nebo bych teda mohl poslat event novy))
+			// 		}
+			// 	});
+			// }
+
+			
 
 		}
 		if("title" in changeInfo){
@@ -327,7 +415,12 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 			//the tab position stays the same
 		}else{
 			//that tab is always inserted after a tab with a certain id
-			tabOrderModifications[tabId] = activeTabId;
+
+			//does it REALLY make sense to have tabOrderModifications keys like this? 10059: 10059
+			//SO:
+			if(tabId != activeTabId){
+				tabOrderModifications[tabId] = activeTabId;
+			}
 			
 		}
 		console.warn("tabOrderModifications",tabOrderModifications);
@@ -337,6 +430,7 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 		browser.tabs.query({}).then(function(tabs){ //added status: "complete"
 		//OOH right, so that active reloading tab only gets getAllTabs response and not tab created
 					console.log(changeInfo); 
+					console.error("run tabCreated")
 				for (var i = 0; i < tabs.length; i++) {
 					if(tabs[i].url.startsWith("about:")){
 						//do nothing
@@ -345,35 +439,24 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 						if(sendPositionModMessageToContent){
 							browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "updateTabBarPos", place: "top"});
 						}
-						//if statement so that we don't send the tabs update info to the new tab, which is polling getAllTabs anyways
-						//actually, with the architecture change that the tab bar gets a cached version of tabs (TabsObject),
-						// it makes sense to send the update to the active tab (otherwise the active tabs title stays loading on that tab)
-						//for example: 
-						//1) go to google.com, you will see it says loading in the tab title
-						//2) go to any other tab, the title of that google tab is going to be google
-						//so we need to send the title update (google) to that google tab as well
-						//if(tabs[i].id != tabId){
+						//console.error("eskeetit") //THIS IS LOGGED
+						//console.error("random text", base); //this IS NOT LOGGED, this line trying to log base BLOCKS eskeetit2 from running
+						//console.error("eskeetit2", changedStuff, faviconCache);//, base);
+						//WORKING CODE yay works, but does not update the icons (that will be done in handleGetFaviconURLResponse)
 
-							//already in getAllTabs: also lets send the tab its id, so it knows its own id
-							//changedStuff.yourID = tabs[i].id;
-
-							//console.error("real tab.index", tab.index);
-	
-						changedStuff.activeTabID = activeTabId;
 						console.log("sending to right tabs " + tab.title);
 						debuggingTabURl = tabs[i].url;
 						let xd= browser.tabs.sendMessage(parseInt(tabs[i].id), changedStuff);
-							
-						//let xd= browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "tabCreated", ID: parseInt(tabId), title: changeInfo.title, url: changeInfo.url}); //apparently title should be changeInfo title
-					
+
+						//that catch statement makes it opaque
 						xd.catch(function(err){
 							//idk, normal tabs on which the tab bar is working normally, idk why throws error: Could not establish connection. Receiving end does not exist.
 							//closing other tabs from that tab with URL of debuggingTabURl works, opening tabs works.
 							console.error(err.message, debuggingTabURl)
 						});
-								//}
-					}
+					//} //this is matching bracket to if(tabs[i].id != tabId){
 				}
+			}
 		});
 }
 
@@ -410,14 +493,16 @@ browser.tabs.onUpdated.addListener(shareWithContentScripts); //,filter //IDEA: h
 function updateTabObject(){
 	browser.tabs.query({}).then(function(panely){
 		TabsObject = panely;
-		console.error(TabsObject)
+		
+		TabsObject.favicons = faviconCache;
 		TabsObject.tabOrderMods = tabOrderModifications;
 		TabsObject.settings = SettingsObject;
+		console.error(TabsObject)
 
 	});
 }
 
-browser.tabs.onCreated.addListener(updateTabObject);
+browser.tabs.onCreated.addListener(updateTabObject); //how about calling this from the handler which opens the new tab
 
 //so it works on session restore 
 updateTabObject();
@@ -439,7 +524,7 @@ function isEmptyObject(obj) {
 }
 //browser.storage.local.get().then(onGot)
 function onGot(items){
-		if(isEmptyObject(items)){
+		if(items == undefined || isEmptyObject(items)){ //isEmptyObject(items) prolly doesnt work
 			//default settings
 
 			//added height to avoid sending undefined to page after URL updated using History API has ran, if the user hasn't changed the height
@@ -452,13 +537,18 @@ function onGot(items){
 				"showBackButtonHorizontal": true,
 				"showReloadButtonHorizontal": true,
 				"showForwardButtonHorizontal": true,
-				"height": "50"
+				"height": "50",
+				"searchEngine": "https://google.com",
+				"to": "left"
   		}
 			browser.storage.local.set(v)		
 		}else{
 			//user has set anything
 			SettingsObject = items;
-			newTabURL = items.searchEngine;
+			console.error(items.searchEngine == undefined); //used to ouput true before I add the items == undefined check  => isEmptyObject check fails = isn't searchEngine always defined if settings are defined
+			//if(items.searchEngine != undefined){
+				newTabURL = items.searchEngine;
+			//}
 			if(items["place"] == "bottom"){ //works
 
 				sendPositionModMessageToContent = false;
