@@ -245,19 +245,15 @@ function handleGetFaviconURLResponse(request, sender, sendResponse, url){
 	}
 
 	if(request.action === "getAllTabs"){
-		//EUREKA! WORKS! followed https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/runtime/onMessage#examples for correct promise based
-		// return browser.tabs.query({}).then(function(panely){
-		// 	console.log("sender",sender.tab);
-		// 	//testing 
-		// 	panely.adresat = sender.tab.id; //add info, where this is sent -> that tab will be higlighted
-
-		// 	panely.tabOrderMods = tabOrderModifications;
-
-		// 	return panely;
-		// });
-
+		
 		//switched to using TabsObject to make it faster
-		TabsObject.adresat = sender.tab.id;
+		TabsObject.adresat = sender.tab.id.toString();
+		console.log("settings to be sent before fix", TabsObject.settings);
+		TabsObject.settings = SettingsObject;
+		console.log("settings to be sent after fix", TabsObject.settings);
+
+		//added missing TabOrderModifications sync (in v2.3 pre release lol => no wonder it wasn't syncing)
+		TabsObject.tabOrderMods = tabOrderModifications;
 		
 		//TabsObject on Android doesn't have info about page favicons, on desktop it would have faviconUrl property of every tab in browser.tabs.query({})
 		//so adding support for favicons using an object with their urls and img tags in tab bar
@@ -345,6 +341,9 @@ browser.tabs.onActivated.addListener(activeTabChanged);
 
 //but NOT sent to active tab when user reloads it, or navigates active tab
 //but not when tab is closed
+
+
+//TODO: TEST NEW REWRITE OF shareWithContentScripts
 function shareWithContentScripts(tabId, changeInfo, tab){
 	//same as sendPositionModMessageToContent
 	//SPEEDS IT UP A LOT! THE TAB BAR ISN'T JUMPING AT ALL (TESTED ON WIKIPEDIA)
@@ -362,103 +361,73 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 			browser.tabs.sendMessage(tabId, {action:"tabBarHeightMod", height: SettingsObject.height});
 		}
 	}
+	//this line revealed, that all necessary info is in the tab Object
+	//no need to figure out what is in changeInfo with if statements and send partial updates (tabs with text of loading a lot of the time)
+	console.log("tab as seen in shareWithContentScripts (tabs.onUpdated listener)", tab);
+	//the tab object here looks like this (some properties listed here)
+	/*
+												active: true
+												audible: undefined
+												height: 838
+												id: 10001
+												status: "complete"
+												title: "Google"
+												url: "https://www.google.com/"
+												width: 414
+	*/
+	let changedStuff = {action: "tabCreated", ID: tabId.toString()}
+	let url = tab.url.split("/")
+	let base = url[0] + "//" + url[2]; //https://www.google.com
 
-		updateTabObject(); //to make sure right tab titles are sent => possible perf idea to maintain a list of tabs and add changes to it to gain perfromance (right now we're querying the browser.tabs.query often, and that is like 30ms slow)
-		//OK, this gets logged
-		//TODO: filter isn't supported on Android: by default browser.tabs.onUpdated reports changes of any kind: url, tab switch, status (ie if ant tab is loading), audible, etc
-	  var changedStuff = {action: "tabCreated", ID: parseInt(tabId)}
-		if("url" in changeInfo){ //to funguje
-			changedStuff.url = changeInfo.url;
-			//get base url (like window.location.origin)
-			//url: https://www.google.com/search?client=firefox-b-d&q=linux+pdf+editor
-			//split("/")
-			//[ "https:", "", "www.google.com", "search?client=firefox-b-d&q=linux+pdf+editor" ]
-			//base = 0, 1, 2 
-			let url = changeInfo.url.split("/")
-			//first three elements of url array
-			let base = url[0] + "//" + url[2];
-			//console.log(base) //https://www.google.com
-			//TADY SE UPDATEUJE URL OBRAZKU
-			//move this a few lines further, inside browser tabs query
-			console.log("faviconCache", faviconCache);
-			if(base in faviconCache){
-				changedStuff.iconUrl = faviconCache[base];
-			}//else{
-			// 	//A TO SE TADY NEDOIMPLEMENTOVALO
-			//TO jsem přidal do getFaviconUrl callbacku v handleGetFaviconURLResponse, ktery uz zavolany je
-			//ten posle faviconUpdated event do openNewTab.js, ze seznamu Id z TabsObject
-			// 	browser.tabs.sendMessage(tabId, {action: "getFaviconUrl"}).then(r =>{
-			// 		if(base in faviconCache){
-			// 			//kdyby se to mezitim doplnilo (v handleGetFaviconURLResponse)
-			// 		}else{
-			// 			faviconCache[base] = r;
-			// 			changedStuff.iconUrl = faviconCache[base];
-			// 			//a to už to asi bude poslaný, proto radši poslat separate event
-			// 			//to budu posilat v handleGetFaviconURLResponse (vygeneruje se tabCreated event s tim obrazkem (a nebo bych teda mohl poslat event novy))
-			// 		}
-			// 	});
-			// }
+	console.log("faviconCache", faviconCache);
+	//if favicon cache has this url, send it 
+	//so it is a bit faster (than calling getFaviconUrl in content.js and getting the response)
+	if(base in faviconCache){
+		changedStuff.iconUrl = faviconCache[base];
+	}
+	changedStuff.title = tab.title;
+	changedStuff.url = tab.url;
 
-			
+	if(String(tabId) in tabOrderModifications){
+		//tabId already, there, tab exists
+		//the only data updated are the title and url properties
+		//the tab position stays the same
+	}else{
+		//that tab is always inserted after a tab with a certain id
+		//does it REALLY make sense to have tabOrderModifications keys like this? 10059: 10059
+		//SO:
+		// if(tabId != activeTabId){
+		// 	tabOrderModifications[tabId] = activeTabId;
+		// }
+		tabOrderModifications[tabId] = activeTabId
+	}
+	browser.tabs.query({}).then(function(tabs){
 
-		}
-		if("title" in changeInfo){
-			changedStuff.title = changeInfo.title;
-		}
+		TabsObject = tabs;
+		TabsObject.favicons = faviconCache;
+		TabsObject.tabOrderMods = tabOrderModifications;
+		TabsObject.settings = SettingsObject;
 
-		//activeTabId sent, so new tab insert after activeTabId
-		//for Android - store the position of these newly opened tabs, because getAllTabs positions them differently (already explained in openNewTab js)
-		//so it's OK: tabs can't be moved in Android and tabIds are unique per session
-		if(String(tabId) in tabOrderModifications){
-			//tabId already, there, tab exists
-			//the only data updated are the title and url properties
-			//the tab position stays the same
-		}else{
-			//that tab is always inserted after a tab with a certain id
+		console.log(changeInfo); 
+		//sometimes the changeInfo is only {status: "complete"}
+		//so no changes to title or url
+		//sometimes its { status: "complete", url: "https://www.google.com/" } though
 
-			//does it REALLY make sense to have tabOrderModifications keys like this? 10059: 10059
-			//SO:
-			if(tabId != activeTabId){
-				tabOrderModifications[tabId] = activeTabId;
-			}
-			
-		}
-		console.warn("tabOrderModifications",tabOrderModifications);
-
-		console.log("fewwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdatedtabs.onUpdated")
-		//IDEA: remove "status: complete" to stop the tab bar jumping when setting tab bar position to top
-		browser.tabs.query({}).then(function(tabs){ //added status: "complete"
-		//OOH right, so that active reloading tab only gets getAllTabs response and not tab created
-					console.log(changeInfo); 
-					console.error("run tabCreated")
-				for (var i = 0; i < tabs.length; i++) {
-					if(tabs[i].url.startsWith("about:")){
-						//do nothing
-					}else{
-						//send position changes to all tabs
-						if(sendPositionModMessageToContent){
-							browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "updateTabBarPos", place: "top"});
-						}
-						//console.error("eskeetit") //THIS IS LOGGED
-						//console.error("random text", base); //this IS NOT LOGGED, this line trying to log base BLOCKS eskeetit2 from running
-						//console.error("eskeetit2", changedStuff, faviconCache);//, base);
-						//WORKING CODE yay works, but does not update the icons (that will be done in handleGetFaviconURLResponse)
-
-						console.log("sending to right tabs " + tab.title);
-						debuggingTabURl = tabs[i].url;
-						let xd= browser.tabs.sendMessage(parseInt(tabs[i].id), changedStuff);
-
-						//that catch statement makes it opaque
-						xd.catch(function(err){
-							//idk, normal tabs on which the tab bar is working normally, idk why throws error: Could not establish connection. Receiving end does not exist.
-							//closing other tabs from that tab with URL of debuggingTabURl works, opening tabs works.
-							console.error(err.message, debuggingTabURl)
-						});
-					//} //this is matching bracket to if(tabs[i].id != tabId){
+		console.error("run tabCreated")
+		for (var i = 0; i < tabs.length; i++) {
+			if(tabs[i].url.startsWith("about:")){
+				//do nothing
+			}else{
+				//send position changes to all tabs
+				if(sendPositionModMessageToContent){
+					browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "updateTabBarPos", place: "top"});
 				}
+				let xd= browser.tabs.sendMessage(parseInt(tabs[i].id), changedStuff);
 			}
-		});
+		}
+	});
 }
+
 
 
 //a bunch of these events are fired before all tabs are even loaded, so register this listener only after all iframes have been loaded)
@@ -490,7 +459,7 @@ browser.tabs.onUpdated.addListener(shareWithContentScripts); //,filter //IDEA: h
 //(loads a new copy everytime while a new tab is loading)
 
 //TL;Dr: is dramatically faster, but does not update when getAllTabs is called from a tab previosly opened, but not loaded in memory => basically any session restore tab (ESPECIALLY IMPORTANT ON ANDROID)
-function updateTabObject(){
+function updateTabObject(firstRun){
 	browser.tabs.query({}).then(function(panely){
 		TabsObject = panely;
 		
@@ -499,13 +468,33 @@ function updateTabObject(){
 		TabsObject.settings = SettingsObject;
 		console.error(TabsObject)
 
+		console.log("SettingsObject updated", SettingsObject);
+
+		//sometimes settings are not applied to the first opened tab on startup 
+		//probably because the tab is loaded and __tabs.onCreated is called__ before SettingsObject is set in onGot)
+		//so this updateTabObject callback is called before the settings are read from storage
+		//so putting a updateSettings event in onGot, in case any tabs were loaded before  this updateTabObject function runs
+
+		//in onGot, the updateSettings event IS sent, but it only to tabs with {status: "complete"} 
+		//so if our first tab is still loading while onGot runs (and after updateTabObject runs with no settings to tell it)
+		//THE TAB NEVER GETS TOLD THE SETTINGS
+
+		//maybe filtering for loaded tabs in onGot is outdated because our content script runs on "document_start" now, not the default "document_idle"
+		//so looking up all tabs with browser.tabs.query({}) and sending settings to loading tabs (which surely have content2.js initialized)
+		//	=> YES, FIXED
+
+		//SO THE SOLUTION is probably to remove the {status: "complete"} filter and to send settings to all tabs
+		//also added TabsObject.settings = SettingsObject; in getAllTabs (it needed to be added 
+		//because when updateTabObject is called, the settings aren't read from storage yet )
+		//	=> WORKS 
+
 	});
 }
 
 browser.tabs.onCreated.addListener(updateTabObject); //how about calling this from the handler which opens the new tab
 
 //so it works on session restore 
-updateTabObject();
+updateTabObject(true);
 
 
 //Add settings support
@@ -524,6 +513,7 @@ function isEmptyObject(obj) {
 }
 //browser.storage.local.get().then(onGot)
 function onGot(items){
+		console.log("read storage", items);
 		if(items == undefined || isEmptyObject(items)){ //isEmptyObject(items) prolly doesnt work
 			//default settings
 
@@ -533,11 +523,11 @@ function onGot(items){
   			"showBackButtonVertical": true,
 				"showReloadButtonVertical": true,
 				"showForwardButtonVertical": true,
-
 				"showBackButtonHorizontal": true,
 				"showReloadButtonHorizontal": true,
 				"showForwardButtonHorizontal": true,
 				"height": "50",
+				"place": "bottom",
 				"searchEngine": "https://google.com",
 				"to": "left"
   		}
@@ -549,12 +539,17 @@ function onGot(items){
 			//if(items.searchEngine != undefined){
 				newTabURL = items.searchEngine;
 			//}
+			console.error("is it undefined on first run",items.place == undefined);
 			if(items["place"] == "bottom"){ //works
 
 				sendPositionModMessageToContent = false;
 				console.error("řřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřřř")
 
-				browser.tabs.query({status: "complete"}).then(function(tabs){
+				//our content script isn't loaded on "document_idle" but on "document_start"
+				//so why are we checking for loaded tabs({status: "complete"})?
+				//what about tabs that are still loading
+				//test sending it to all tabs
+				browser.tabs.query({}).then(function(tabs){ //{status: "complete"}
 					for (var i = 0; i < tabs.length; i++) {
 						if(tabs[i].url.startsWith("about:")){
 							//do nothing
@@ -562,6 +557,7 @@ function onGot(items){
 							browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "updateTabBarPos", place: "bottom"});
 							//same as the settings key in getAllTabs response, this is for sending changes before tabs reload
 							browser.tabs.sendMessage(parseInt(tabs[i].id), {action: "updateSettings", settings: items});
+							console.log("updateSettings to send correct settings sent")
 
 							if(items.height != "50"){
 								browser.tabs.sendMessage(parseInt(tabs[i].id), {action:"tabBarHeightMod", height: items.height});
@@ -574,8 +570,8 @@ function onGot(items){
 			}else if(items["place"] == "top"){
 
 					sendPositionModMessageToContent = true;
-
-					browser.tabs.query({status: "complete"}).then(function(tabs){
+					//test sending it to all tabs
+					browser.tabs.query({}).then(function(tabs){ //status: "complete"
 						for (var i = 0; i < tabs.length; i++) {
 							if(tabs[i].url.startsWith("about:")){
 								//do nothing
