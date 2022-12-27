@@ -14,3 +14,15 @@ This add-on re-implements the tab bar from desktop we all love, on Android table
 
 
 You can see screenshots at: https://addons.mozilla.org/en-US/firefox/addon/tablet-ui-for-firefox/
+
+## Changelog
+**v2.3 fixed three user interface bugs:** 
+- Settings were not applied to the first loaded tab (basically the tab was loaded before the storage was read)
+- Tab order was not always consistent (basically TabOrderModifications were not sent to every tab like they should have)
+- The selected style was not always applied to the active tab (due to tabs being drawn async because getting favicons)
+
+v2.2 SHIPPED FAVICON SUPPORT (those little pictures you see in the screenshot)
+
+v2.0 Added settings and customization for users
+
+v1.0 Initial release
