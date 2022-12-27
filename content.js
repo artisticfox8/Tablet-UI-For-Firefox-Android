@@ -141,9 +141,14 @@ document.addEventListener("touchstart", function(event) {
 // 	browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHackOff"});
 // });
 
+
+
 //that was a bug caused by alert() in the mouseenter function: while MDN says it fires once when the mouse goes over the element (as opposed to mouseover), in reality it fires after any mouse movement => 
 //mouseenter works
-document.body.addEventListener("mouseenter", function(event) {
+//why did I use document.body here and not document?
+//sometimes document.body.addEventListener results in Uncaught TypeError: can't access property "addEventListener", document.body is null
+//so changing it to document (like the touchstart definition)
+document.addEventListener("mouseenter", function(event) { //document.body
 	console.log("mouseenter")
 	//tell the openNewTab5.js that the user is not in the tab bar UI, and continues to use a website
 	// event.target.style.color = "purple" //works
