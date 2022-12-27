@@ -1,6 +1,6 @@
 {
   "name" : "Tab bar",
-  "version": "2.2",
+  "version": "2.3",
   "manifest_version": 2,
   "web_accessible_resources": ["tab bar v6.html","openNewTab6.js"],
   "content_scripts": [
