@@ -26,3 +26,6 @@ v2.2 SHIPPED FAVICON SUPPORT (those little pictures you see in the screenshot)
 v2.0 Added settings and customization for users
 
 v1.0 Initial release
+
+## How to develop
+For persistent storage, add  `"browser_specific_settings": {"gecko": { "id": "text@gmail.com" }}` to manifest.json
