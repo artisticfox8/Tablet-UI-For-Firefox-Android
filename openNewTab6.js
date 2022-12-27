@@ -1,6 +1,5 @@
 var activeTabId = 0; //the only assignment to this is when switchedToThisTab is called: activeTabId = String(message.ID);
 var thisTabsTabId = 0;
-var closeTabInt = false; //if tab closed in this window
 var translateYhackOn = true;
 let settingsObject = {}; //from var settingsObject because of https://stackoverflow.com/questions/30469755/why-a-variable-defined-global-is-undefined
 var tabFontSize = "0.9rem"; //equals 14.4px
@@ -53,8 +52,6 @@ function applySelectedStyle(wrapperId){ //for example w22
 		//the second call could cause jumps if the user already scrolled between the two messages, but OTHER than that it should work
 
 
-//FIXED: SEE COMMENT IN CONTENT JS (USING document.body.style now): NOW THIS UI WORKS ON DESKTOP, BUT DOESNT WORK ON ANDROID, IT IS THE SAME CODE!
-
 //FIXED: removed the focusout event from document, since it was buggy (supposedly removing the button before the click event listener even fired; when I removed that in favor of blur event on the button, it started to work 
 //FIXED by using inline styles: Interestingly, the v1 UI with injecting stylesheets does not work on Windows (v1 official version tested), but it does on Android (also tested v1 official version from the addon store)
 
@@ -106,24 +103,19 @@ document.getElementById("plus").addEventListener("contextmenu", function(e){
 // });
 
 
+//								{id: id, title: title, adress: url, appendAfterId: id, favicon: url, selectThisTAB: true/false, scrollTabIntoView: true/false}
+function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTAB, scrollIntoView
 
-function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scrollIntoView){ //appendAtIndex //TL DR; classes in JS are f*cking nonsense; they don't behave like civilized Python classes at all! (what would a class be that couldn't remember its self object! (here in click event listener))
 		var wrapperDiv = document.createElement("div");
 		var faviconImg = document.createElement("img"); //initializing it either way, its src might be updated later (in tabCreated, when navigating to different page sent from shareWithContentScripts )
 		faviconImg.onerror = function(){faviconImg.style.display='none'}; //for pages that have no icon
-		faviconImg.id = "i" + id;
-		if(favicon){
+		faviconImg.id = "i" + e.id;
+		if(e.favicon){
 			faviconImg.height =  24; // window.innerHeight  * 0.4; //16
 			faviconImg.width = 24; //window.innerHeight  * 0.4; //24; //16
-			//<img src="img.jpg" onerror="this.style.display='none';" />
-			faviconImg.src = favicon;
-			
+			faviconImg.src = e.favicon;	
 		}
-		// if(selectThisTAB == true){
-		// 	console.log("is it fookin selected, YA bastard?!")
-		// 	//wrapperDiv.classList.add("selected");
-		// 	//gets overwritten by className
-		// }
+
 		wrapperDiv.appendChild(faviconImg);
 		var tabElement = document.createElement("a"); //changed to a for android native menu //div //originally button, but changed for nesting buttons in html
 		var decorative = document.createElement('div');
@@ -131,7 +123,7 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 
 		wrapperDiv.className = "tab";
 		tabElement.className = "tabTitle";
-		if(selectThisTAB == true){
+		if(e.selectThisTAB == true){
 			//wrapperDiv.className += "selected"; //breaks it completely lol
 			//THAT works. But after the className property has been set, className does override classList.add
 			wrapperDiv.classList.add("selected");
@@ -140,16 +132,16 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 		if(tabFontSize != "0.9rem"){
 			tabElement.style.fontSize = tabFontSize;
 		}
-		wrapperDiv.id = "w" + id;
-		tabElement.id = id;
-		tabElement.href = adress; //"http://www.seznam.cz" //right click MENU WORKs // this is link href - ie URL where it points to
+		wrapperDiv.id = "w" + e.id;
+		tabElement.id = e.id;
+		tabElement.href = e.adress; //"http://www.seznam.cz" //right click MENU WORKs // this is link href - ie URL where it points to
 		//When the text is too long, the close button gets pushed out of the tab under other tabs => position the button absolutely to its parent
 		//clip text currently max width is 12em
 		//So clip to 10 characters
 
 		//možná if title tak title. slice
-		if(title !== undefined){
-			if(title.length < 7){
+		if(e.title !== undefined){
+			if(e.title.length < 7){
 				//this hack because display flex on wrapperdiv breaks the tab bar layout completely
 
 			/*				Since none of the other answers explain why your code doesn’t work:
@@ -158,13 +150,13 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 			  The effect in your case is that surrounding whitespace is stripped off. – 
 			Konrad Rudolph*/
 			//comment from https://stackoverflow.com/questions/47768523/empty-spaces-are-ignored-by-the-innertext-property
-				let text = title + " ".repeat(8 - title.length)
+				let text = e.title + " ".repeat(8 - e.title.length)
 				tabElement.textContent = text;
 			}else{
-				tabElement.textContent = title.slice(0, 11); //"Text" + counter + " "; //text displayed on tab
+				tabElement.textContent = e.title.slice(0, 11); //"Text" + counter + " "; //text displayed on tab
 			}
 		}else{
-			tabElement.innerText = "loading";
+			tabElement.textContent = "loading";
 		}
 		//for pages with very short titles (like Bing), after I changed the .tab min width from 65px to 80px, so the button displays on the right
 		//let alignCloseButtonRight = document.createElement("div");
@@ -172,25 +164,24 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 		//that code with text align didn't work here, probably because the button has not text, only an icon
 		//=> just add trailing spaces if the text is too short (CSS property white-space: pre; had to be applied, else innerText ignores the trailing spaces)
 		let close = document.createElement("button");
-		close.id = "c" + id;
+		close.id = "c" + e.id;
 		close.className = "closeButton";
 		close.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="12" height="12" fill="currentColor" fill-opacity="context-fill-opacity"> <path d="m9.108 7.776 4.709-4.709a.626.626 0 0 0-.884-.885L8.244 6.871l-.488 0-4.689-4.688a.625.625 0 1 0-.884.885L6.87 7.754l0 .491-4.687 4.687a.626.626 0 0 0 .884.885L7.754 9.13l.491 0 4.687 4.687a.627.627 0 0 0 .885 0 .626.626 0 0 0 0-.885L9.108 8.223l0-.447z"/></svg>'
 		
-
 		wrapperDiv.appendChild(tabElement);
 		wrapperDiv.appendChild(close);
 		wrapperDiv.appendChild(decorative);
 
-		console.log(tabElement, wrapperDiv);
+		console.log("tabElement", tabElement, "wrapperDiv", wrapperDiv);
 
 		//alignCloseButtonRight.appendChild(close);
 		//wrapperDiv.appendChild(alignCloseButtonRight);
 
 
-		//return to appendAfterId from appendAtIndex because of https://github.com/mozilla-mobile/fenix/issues/26369
-		if(appendAfterId !== undefined){
-			console.log(appendAfterId);
-			let thatRapper = document.getElementById("w" + String(appendAfterId));
+		//return to appendAfterId from appendAtIndex because Android sets every tab's index property to 0 (https://github.com/mozilla-mobile/fenix/issues/26369)
+		if(e.appendAfterId !== undefined){
+			console.log(e.appendAfterId);
+			let thatRapper = document.getElementById("w" + e.appendAfterId);
 
 			if(thatRapper == null){
 				document.getElementById("tabcontainer").appendChild(wrapperDiv);
@@ -208,65 +199,68 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 
 		tabElement.addEventListener ("click", function(e) {
 			e.preventDefault(); //so the browser doesn't navigate to that link onclick
-			//if(e.target.classList.contains("tab")){
-		  	//alert("did something " + tabElement.id); //add tabswitch logic
-		  	//add tab bar scroll state sync (the idea works well on a landscape orientation, but it doesn't (I think, not tested on mobile) on a narrow screen (portrait orientation), where the tab switched to is fully scrolled into view )
-		  	let tabBarPosition = document.getElementById("tabcontainer").scrollLeft;
-		  	let sending = browser.runtime.sendMessage({action: "switchTab", tabID: tabElement.id, scrolled: tabBarPosition});
-		  	
-		  	//unset selected style of the tab selected before
-		  	//the reason why we change the styling of the active tab on switchedToThisTab action is because  WE NAVIGATE TO A different TAB (the user may switch tab using the browser too
-		  	try{
-		  		//switch from CSS text to setting properties one by one because the cssText property overrides a custom font size selected by the user
-		  		//font sizes not jumping good
-		  		//document.getElementById("w" + activeTabId).style.cssText = "background: #e9e9ed;border: 1px solid #ddd;";
-		  		
-		  		//lets check if activeTabId is always 0 on this tab => it is (until switchedToThisTab is ran)
-		  		//so lets assign activeTabId the value of thisTabsTabId as an initial value
-		  		console.log("eEeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEE", activeTabId == 0);
 
-		  		let wrapper = document.getElementById("w" + activeTabId); //"w" + activeTabId
-		  		wrapper.classList.remove("selected");
-		  		// wrapper.style.background = "#e9e9ed";
-		  		// wrapper.style.border = "1px solid #ddd";
-		  	}
-		  	catch(error){
-		  		console.log(error);
-		  	}
+	  	//add tab bar scroll state sync (the idea works well on a landscape orientation, but it doesn't (I think, not tested on mobile) on a narrow screen (portrait orientation), where the tab switched to is fully scrolled into view )
+	  	let tabBarPosition = document.getElementById("tabcontainer").scrollLeft;
+	  	let sending = browser.runtime.sendMessage({action: "switchTab", tabID: tabElement.id, scrolled: tabBarPosition});
 
-		  console.log(tabElement.id);
-			//}
+	  	//try{
+	  		//switch from CSS text to setting properties one by one because the cssText property overrides a custom font size selected by the user
+	  		//font sizes not jumping good
+	  		
+	  		//lets check if activeTabId is always 0 on this tab => it is (until switchedToThisTab is ran)
+	  		//so lets assign activeTabId the value of thisTabsTabId as an initial value
+	  		console.log("eEeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEE", activeTabId == 0);
+
+	  		let wrapper = document.getElementById("w" + activeTabId); //"w" + activeTabId
+	  		wrapper.classList.remove("selected");
+
+	  	// }catch(error){
+	  	// 	console.error(error);
+	  	// }
+
+	  console.log("tabElement.id", tabElement.id);
+
 		});
-
 
 		//document.getElementById(id).scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"});
 		 
-		document.getElementById("c" + id).addEventListener("click", function(){ 
+		document.getElementById("c" + e.id).addEventListener("click", function(){ 
 			//detect if this is an active tab (something like checking the selected class)
 			let switchToTabId = "";
 			let a = ""
-			if(document.getElementById("w" + id).classList.contains("selected")){
+			if(document.getElementById("w" + e.id).classList.contains("selected")){
 				//Either with or without window prefix: Uncaught TypeError: can't access property "to", settingsObject is undefined
 				//So called hoisting https://stackoverflow.com/questions/30469755/why-a-variable-defined-global-is-undefined
 				if(settingsObject.to == "left"){
 					console.log("left")
 					a = "left"
 					try{
-						switchToTabId = document.getElementById("w" + id).previousElementSibling.children[1].id;
+						switchToTabId = document.getElementById("w" + e.id).previousElementSibling.children[1].id;
 					}catch{
 						//the first tab on a list would have a previousElementSibling null, and .children would throw a TypeError
 						//so setting it to nextElementSibling
-						switchToTabId = document.getElementById("w" + id).nextElementSibling.children[1].id;
+						try{
+							switchToTabId = document.getElementById("w" + e.id).nextElementSibling.children[1].id;
+						}catch{
+							//when we only have one tab loaded
+							//let the browser handle it (same as don't interfere wit browser)
+						}
 					}
 				}else if(settingsObject.to == "right"){
 					console.log("right")
 					a = "right"
 					try{
-						switchToTabId = document.getElementById("w" + id).nextElementSibling.children[1].id;
+						switchToTabId = document.getElementById("w" + e.id).nextElementSibling.children[1].id;
 					}catch{
 						//the last tab on a list would have a nextElementSibling null, and .children would throw a TypeError
 						//so setting it to previousElementSibling
-						switchToTabId = document.getElementById("w" + id).previousElementSibling.children[1].id;
+						try{
+							switchToTabId = document.getElementById("w" + e.id).previousElementSibling.children[1].id;
+						}catch{
+							//when we only have one tab loaded
+							//let the browser handle it (same as don't interfere wit browser)
+						}
 					}
 				}else{
 					console.log("don't interfere wit browser")
@@ -275,26 +269,20 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 			console.log("switchToTabId " +  switchToTabId + " " + a)
 			//if the tab closed is not the active tab, the switchToTabId variable is undefined and  Uncaught ReferenceError: switchToTabId is not defined
 			//if it is defined, it is a string with the tab id to switch to after the tab was closed
-			let sending = browser.runtime.sendMessage({action: "closeTab", tabID: id, switchToTab: switchToTabId}); //tabElement.id //message to background script
-			// sending.then(function(e){
-			// 	closeTabInt = true;
-			// 	//tabElement.remove(); //leaves bits around
-			// 	while(wrapperDiv.firstChild) wrapperDiv.removeChild(wrapperDiv.firstChild)
-			// 	wrapperDiv.remove()
-			// });
+			let sending = browser.runtime.sendMessage({action: "closeTab", tabID: e.id, switchToTab: switchToTabId}); //tabElement.id //message to background script
 		});
 
 		//Add the right click listener on the tabs
-		document.getElementById(id).addEventListener("contextmenu", function(){
+		document.getElementById(e.id).addEventListener("contextmenu", function(){
 			//tell the background script, that the new tab may be from that right click
 			//until the user touches anything other on the page, it is safe to assume this
-			document.getElementById("w" + id).style.background = "indianred";
+			document.getElementById("w" + e.id).style.background = "indianred";
 
-			browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHack", tabID: id});
+			browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHack", tabID: e.id});
 		});
 
 		//a tooltip for debugging
-		wrapperDiv.title = id;
+		wrapperDiv.title = e.id;
 		//works on Windows, not on Android => moving to click listener on content scriot
 		// document.addEventListener("focusout",function(){
 		// 	document.getElementById("reloadButton").style.background = "gold";
@@ -307,7 +295,7 @@ function createTAB(id, title, adress, appendAfterId, favicon, selectThisTAB, scr
 		// document.addEventListener("focusin",function(){
 		// 	document.getElementById("reloadButton").style.background = "white";
 		// })
-		if(scrollIntoView == true){
+		if(e.scrollTabIntoView == true){
 			wrapperDiv.scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"});
 		}
 
@@ -331,9 +319,12 @@ function handleResponse(message){ //response to getAllTabs
 	//handle settings first => special function for that
 	handleSettings(message.settings);
 	//create the tabs	in tab bar
-	console.log(message);
+	console.log('%c ****** RUN STARTED ****** ', 'background: #222; color: #bada55');
+	console.log("message.favicons", message.favicons);
+	console.log("message.adresat", message.adresat);
 	for (let i = 0; i < message.length; i++) { //var in for loop delcaration caused out of range errors for message[i] for some reason
-	
+		console.log("id in for loop, listed from message", message[i].id)
+		//TODO: MOVE tabOrderModifications LOGIC TO BACKGROUND.JS (it si not always synced right to all tabs, so do it in th ebacg)
 		//update tab position according to tabOrderModifications 
 		let appendAfter = "";
 		if(message[i].id in message.tabOrderMods){
@@ -351,29 +342,42 @@ function handleResponse(message){ //response to getAllTabs
 			continue;
 		}
 
-
 		let x = message[i].url.split("/"); //like https://www.google.com/search?client=firefox-b-d&q=linux+pdf+editor
 		let base = x[0] + "//" + x[2]; //like https://www.google.com
 		console.log("base", base);
 
-		console.log("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM", message.favicons[message[i].url]);
+		let baseConfig = {
+			"id": message[i].id,
+			"title": message[i].title,
+			"adress": message[i].url,
+			"appendAfterId": appendAfter,
+			"selectThisTAB": false, //handled by message[i].id == message.adresat check
+			"scrollTabIntoView": true
+		}
 		if(message.favicons[base] == undefined && message[i].url !== undefined){
-			
-			browser.runtime.sendMessage({action:"getFaviconURL", url: base}).then(response=>{
-				//alert("got response and can paint it " + response); //returns the url correctly //FIXED by using return true below the async call (not in it) in onMessage in background.js : response WAS undefined BECAUSE the onMessage handler in background was not listening to the response in async call (another sendMessage, to content.js)
-				
+			browser.runtime.sendMessage({action:"getFaviconURL", url: base}).then(response=>{				
 				//possible (this is an async call back, that it runs after the next iteration (maybe) in the else statement)
 				//so added id check
 				if(document.getElementById(message[i].id) != null){
+					if(message[i].id == message.adresat){
+						//the tab was just created
+						console.log("wrapper with id w" + message.adresat + "to be selected FROM EXCEPTION");
+						applySelectedStyle("w" + String(message.adresat));
+					}
 					return;
 				} 
 				//either check if the message[i].id == message.adresat here to pass selectThisTAB=true (the first boolean parameter) only to the right tab
 				//Or, simply call applySelectedStyle AND scrollIntoView after all tabs have been created
-				createTAB(message[i].id, message[i].title, message[i].url, appendAfter, response, false, true); 
+				baseConfig.favicon = response;
+				createTAB(baseConfig); //message[i].id, message[i].title, message[i].url, appendAfter, response, false, true
+				console.warn("tab id", message[i].id,"adresat id", message.adresat);
 				if(message[i].id == message.adresat){
 					//the tab was just created
-					applySelectedStyle("w" + String(message.adresat));
+					//alert("r");
+					console.log("wrapper with id w" + message.adresat + " to be selected");
+					applySelectedStyle("w" + message.adresat);
 				}
+				console.log('%c ****** RUN ACTUALLY ENDED IN ASYNC ****** ', 'background: #222; color: #bada55');
 				//applySelectedStyle("w" + String(message.adresat)); //replaced by selectThisTAB=true paramater
 				//document.getElementById("w" + String(message.adresat)).scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"}); //replaced by scrollIntoView=true paramater
 			});
@@ -385,35 +389,21 @@ function handleResponse(message){ //response to getAllTabs
 			//but there should not be an element with the id of null, so that is weird
 			if(document.getElementById(message[i].id) != null){
 				return; //seems to work great (URL was updated with history api or something => reload => new getAllTabs => duplicate tabs)
-			} 
-			createTAB(message[i].id, message[i].title, message[i].url, appendAfter, message.favicons[base], false, true);
+			}
+			baseConfig.favicon = message.favicons[base];
+			createTAB(baseConfig); //message[i].id, message[i].title, message[i].url, appendAfter, message.favicons[base], false, true
+			console.warn("(the favicon is in memory) tab id", message[i].id,"adresat id", message.adresat);
 			if(message[i].id == message.adresat){
 				//the tab was just created
+				console.log("wrapper with id w" + message.adresat + "to be selected");
 				applySelectedStyle("w" + String(message.adresat));
 			}
 			//applySelectedStyle("w" + String(message.adresat)); //replaced by selectThisTAB=true paramater
 			//document.getElementById("w" + String(message.adresat)).scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"});//replaced by scrollIntoView=true paramater
-		}
-			
+		}			
+				
 	}
-	//select this tab (what this does is it selects the title tab on every tab) = well this obviously did not work, because 
 
-	//try{ 
-		//now the page at https://appgallery.huawei.com/app/C101904093 works (it ouputs idk lol), but it works
-		//document.getElementById("w" + String(message.adresat)).style.cssText = "background:#b1b1b9;border-color: transparent;font-size:" + tabFontSize; //cssText overrides fontSize set in CreateTAB
-		
-		//since a tab with an unknown icon is created in an async .then callback, this can run before the tab is created, resulting in TypeError in applySelectedTabs
-		//so moving applySelectedStyle after createTab in both cases 
-		//=> LOL, tam to taky nefungovalo, applySelectedStyle HLEDAL ELEMENTY, KTERÉ TAK JAKO TAK NEBYLY VYTVOŘENÉ
-		//=> tzn.  ŘEŠENÍ je message[i].id == message.adresat check uvnitř (opět někdy to (po přídavku favikonů) má async .then callback) => tzn nelze to umístit pod for loop right?
-			//přesně tak, zkus odkomentovat tohle:
-		// applySelectedStyle("w" + String(message.adresat));
-
-		// document.getElementById("w" + String(message.adresat)).scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"}); //TODO: Test if it works correctly
-	//}
-	//catch{
-	//	console.log("idk lol");
-	//}
 	thisTabsTabId = message.adresat
 
 	//lets assign activeTabId the value of thisTabsTabId as an initial value
@@ -423,7 +413,7 @@ function handleResponse(message){ //response to getAllTabs
 	if(activeTabId == 0){
 		activeTabId = thisTabsTabId;
 	}
-
+	console.log('%c ****** RUN ENDED ****** ', 'background: #222; color: #bada55'); //reminded me that the function is async
 }
 
 
@@ -508,7 +498,6 @@ function handleMessagesFromBackgroundScript(message){
 		//thisTabsTabId = message.yourID;
 	
 		if(message.title == "Tablet UI for Firefox Settings" || message.ID == settingsTabId){ 
-			console.log("tvoje máma", message.ID)
 			settingsTabId = message.ID;
 			console.log(message.ID) 
 			//Vybere správný element, ale z nějakého důvodu nefunguje metoda .click() je třeba to udělat manuálně
@@ -531,22 +520,25 @@ function handleMessagesFromBackgroundScript(message){
 		if(a == null){ 
 			//ANDROID only BUG: the index property is the same for all tabs
 			// Array [ {…}, {…} ]
-			// ​
+			//
 			// 0: Object { id: 10051, index: 0, windowId: 51, … }
-			// ​
+			//
 			// 1: Object { id: 10058, index: 0, windowId: 58, … }
 
 			//So the fix is to listen for all rightlick events on a page (and then say the next opened tab is from that)
 				//So, the next opened tab is always opened to the right of the active tab, unless the user opens rightlick menu on one of the tabs in tab bar, then the activeTab is changed to that tabs id, so the new tab is open right next to it
-				
-				//TODO: fix duplicate tabs being loaded when the icon is not in cache
-				// if("iconUrl" in message){
-				// 	createTAB(String(message.ID), message.url, message.title, message.activeTabID, message.iconUrl); //thisTabsTabId //message.thatTabsIndex
-				// }else{
-				// 	createTAB(String(message.ID), message.url, message.title, message.activeTabID); //thisTabsTabId //message.thatTabsIndex
-				// }
-				console.log("tab Created RAN eiowfhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhHOWEIFHŠFIZQŠOFP")
-				createTAB(String(message.ID), message.url, message.title, message.activeTabID, message.iconUrl); //createTAB can handle undefined message.iconUrl
+
+				console.log("tab Created RAN in openNewTab.js, got data:", message);
+				let config = {
+					"id": message.ID,
+					"title": message.title,
+					"adress": message.url,
+					"appendAfterId": message.activeTabID,
+					"favicon": message.iconUrl,
+					"selectThisTAB": false, //handled by message[i].id == message.adresat check
+					"scrollTabIntoView": false
+				}
+				createTAB(config); //String(message.ID), message.url, message.title, message.activeTabID, message.iconUrl //createTAB can handle undefined message.iconUrl
 
 			//doesn't scroll where wadocument.getElementById("w" + String(message.ID)).scrollIntoView({behavior: "smooth", block: "end", inline: "end"});
 		}else{
@@ -571,21 +563,15 @@ function handleMessagesFromBackgroundScript(message){
 				img.src = message.iconUrl;
 
 			}
-			
-			//ADD THE TAB TO THE LIST OF TABS WITH MODIFIED INDEX, which doesn't match their order 
-			//(not index property, just index in that array) in getAllTabs => TO PRESERVE THEIR POSITION IN NEWLY CREATED TABS
-				///když duplikuješ panel pomocí rightlicku z tab baru, tak se zobrazí vedle ve všech otevřených panelech,
-				//ale v novém otevřeném panelu se ten nový panel zobrazí ne za tím původním, ale až na konec úplně napravo
-				// => moved this to background js		
+				
 		}
 	}
-	if(message.action == "tabClosed"){ //&& !closeTabInt){
+	if(message.action == "tabClosed"){
 		//document.getElementById(String(message.ID)).remove(); //when user closes a tab from other tab
 		let wrapperDiv = document.getElementById("w" + String(message.ID));
 		while(wrapperDiv.firstChild) wrapperDiv.removeChild(wrapperDiv.firstChild)
 		wrapperDiv.remove()
 	}
-	closeTabInt = false;
 	//add tab updated
 	///FIXED: see comment about setTimeout in settings.js
 	//settingsAreOpen is not RAN here: browser.runtime.sendMessage does not send to content scripts
