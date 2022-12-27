@@ -28,4 +28,4 @@ v2.0 Added settings and customization for users
 v1.0 Initial release
 
 ## How to develop
-For persistent storage, add  `"browser_specific_settings": {"gecko": { "id": "text@gmail.com" }}` to manifest.json
+For persistent storage, add  `"browser_specific_settings": {"gecko": { "id": "text@gmail.com" }}` to manifest.json. The id can be any text
