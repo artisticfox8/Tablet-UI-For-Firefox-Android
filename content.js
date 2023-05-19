@@ -1,5 +1,6 @@
 var tabBarPosition = "bottom";
 var tabBarHeight = "50";
+var videoIsFullscreen = false;
 
 function load(){
 	//sometimes I get two tab bars on a page (now obvious when playing with tab bar placement (one at the top, one at the bottom)), so first check if there is an element already
@@ -52,12 +53,13 @@ load();
 function handleMessages(request, sender, sendResponse){
 	if(request.action == "getFaviconUrl"){ //getThatFavicon
 		let url = getFaviconURL();
-		//return url; //return didnt work here for some reason
+		//return url; //return (with handleMessages defined as async function) didnt work here for some reason
 		//NOW WITH sendResponse IT WORKS
 		sendResponse(url);
 	}
-	if(request.action === "updateTabBarPos"){
-		 if(request.place == "top"){
+	//When a fullscreen video on YouTube is paused, tabCreated runs with Object { audible: false } and updateTabBarPos is sent, setting the translateY property and sending the video off screen
+	if(request.action === "updateTabBarPos"){ 
+		 if(request.place == "top" && videoIsFullscreen == false){
 
 		 	tabBarPosition = "top";
 
@@ -75,7 +77,7 @@ function handleMessages(request, sender, sendResponse){
 		 	if(request.place == "bottom"){
 		 		tabBarPosition = "bottom";
 		 		console.log("updateTabBarPos BOTTOM");
-		 		document.body.style.transform = "translateY(0px)"; //initial //what sure works is translateY(0px)
+		 		document.body.style.transform = "";
 		 		document.getElementById("iframekontejner").style.top = "";
 			 	document.getElementById("iframekontejner").style.bottom = "0px";
 		 	}
@@ -111,7 +113,7 @@ function handleMessages(request, sender, sendResponse){
 	}
 	if(request.action === "translateYhackOff"){
 		console.log("received")
-		document.body.style.transform = "translateY(0px)"
+		document.body.style.transform = "" //changed from translateY(0px) to allow fullscreen YouTube videos to work properly
 		//stylesheet.disabled = true;
 	}
 	if(request.action === "translateYhackOn"){
@@ -151,7 +153,6 @@ document.addEventListener("touchstart", function(event) {
 document.addEventListener("mouseenter", function(event) { //document.body
 	console.log("mouseenter")
 	//tell the openNewTab5.js that the user is not in the tab bar UI, and continues to use a website
-	// event.target.style.color = "purple" //works
 	browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHackOff"});
 });
 
@@ -166,3 +167,21 @@ function getFaviconURL(){
 	}
 	return url;
 }
+
+//Fix for YouTube when using the position top tab bar
+//detects browser going fullscreen and sets the document.body.style.transform = ""
+//detects the browser going back and sets the document.body.style.transform = "translateY("+ tabBarHeight + "px)"
+document.addEventListener('fullscreenchange', function(){
+	isInFullscreen = document.fullscreenElement;
+	if(isInFullscreen !== null){ //youtube.com is in fullscreen
+		videoIsFullscreen = true;
+		if(tabBarPosition == "top"){
+			document.body.style.transform = "";
+		}
+	}else{
+		videoIsFullscreen = false;
+		if(tabBarPosition == "top"){
+			document.body.style.transform = "translateY("+ tabBarHeight + "px)";
+		}
+	}
+});
