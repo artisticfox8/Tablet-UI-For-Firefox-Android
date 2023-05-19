@@ -19,8 +19,10 @@ You can see screenshots at: https://addons.mozilla.org/en-US/firefox/addon/table
 **v2.4 fixed full screen video on m.youtube.com with tab bar position top**
 
 Previously when users set the tab bar to appear on top, the video as well as some Youtube player controls were not visible on screen.
-This fix applies to Youtube and every other website which makes video fullscreen by resizing the (position: absolute) <video> element to fit the whole screen. Because Youtube sets position: absolute on the video, it gets pushed off screen with the transform: translateY(50px) hack that the tab bar uses to shift the page down, to not overlap the page content.
-The tab bar detects that the webpage is in full screen mode using the fullscreenchange event. Then it sets the transform property to an empty string, resetting it. Youtube makes the HTML <body> the full screen element, instead of the video.  If it simply made <video> the full screen element (requestFullscreen()), instead of positioning it absolutely and setting the width and height to the display's height, this fix wouldn't be needed.
+
+This fix applies to Youtube and every other website which makes video fullscreen by resizing the (`position: absolute`) `<video>` element to fit the whole screen. Because Youtube sets `position: absolute` on the video, it gets pushed off screen with the `transform: translateY(50px)` hack that the tab bar uses to shift the page down, to not overlap the page content.
+
+The tab bar detects that the webpage is in full screen mode using the `fullscreenchange` event. Then it sets the transform property to an empty string, resetting it. Youtube makes the HTML `<body>` the full screen element, instead of the `<video>`.  If it simply made `<video>` the full screen element (requestFullscreen()), instead of positioning it absolutely and setting the width and height to the display's height, this fix wouldn't be needed. </video>
   
 **v2.3 fixed three user interface bugs:** 
 - Settings were not applied to the first loaded tab (basically the tab was loaded before the storage was read)
