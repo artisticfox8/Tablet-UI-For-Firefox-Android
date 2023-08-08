@@ -39,10 +39,6 @@ function applySelectedStyle(wrapperId){ //for example w22
 	//TAKŽE KLASICKY
 	//klasika funguje, krása
 	tab.classList.add("selected");
-	// tab.style.background = "#b1b1b9";
-	// tab.style.borderColor = "transparent";
-	tab.style.fontSize = tabFontSize;
-	
 }
 
 
@@ -210,7 +206,7 @@ function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTA
 	  		
 	  		//lets check if activeTabId is always 0 on this tab => it is (until switchedToThisTab is ran)
 	  		//so lets assign activeTabId the value of thisTabsTabId as an initial value
-	  		console.log("eEeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEE", activeTabId == 0);
+	  		console.log("eEeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEE", activeTabId);
 
 	  		let wrapper = document.getElementById("w" + activeTabId); //"w" + activeTabId
 	  		wrapper.classList.remove("selected");
@@ -238,8 +234,7 @@ function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTA
 					try{
 						switchToTabId = document.getElementById("w" + e.id).previousElementSibling.children[1].id;
 					}catch{
-						//the first tab on a list would have a previousElementSibling null, and .children would throw a TypeError
-						//so setting it to nextElementSibling
+						//the first tab on a list would have a previousElementSibling null, and .children would throw a TypeError => so setting it to nextElementSibling
 						try{
 							switchToTabId = document.getElementById("w" + e.id).nextElementSibling.children[1].id;
 						}catch{
@@ -276,25 +271,14 @@ function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTA
 		document.getElementById(e.id).addEventListener("contextmenu", function(){
 			//tell the background script, that the new tab may be from that right click
 			//until the user touches anything other on the page, it is safe to assume this
-			document.getElementById("w" + e.id).style.background = "indianred";
+			//document.getElementById("w" + e.id).style.background = "indianred";
 
 			browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHack", tabID: e.id});
 		});
 
 		//a tooltip for debugging
 		wrapperDiv.title = e.id;
-		//works on Windows, not on Android => moving to click listener on content scriot
-		// document.addEventListener("focusout",function(){
-		// 	document.getElementById("reloadButton").style.background = "gold";
-		// 	//alert("runs")
-		// 	browser.runtime.sendMessage({action: "activeTabOnRightClickChangeHackOff", tabID: id});
-		// });
 
-
-		//for testing only
-		// document.addEventListener("focusin",function(){
-		// 	document.getElementById("reloadButton").style.background = "white";
-		// })
 		if(e.scrollTabIntoView == true){
 			wrapperDiv.scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"});
 		}
@@ -330,6 +314,7 @@ function handleResponse(message){ //response to getAllTabs
 		if(message[i].id in message.tabOrderMods){
 			appendAfter = message.tabOrderMods[message[i].id];
 		}else{
+			console.error("it is undefined case");
 			appendAfter = undefined; //createTAB handles that
 		}
 
@@ -510,13 +495,12 @@ function handleMessagesFromBackgroundScript(message){
 		}
 
 		//when the tab loads, some of these properties are undefined, so this was be redesigned to update only the data which is defined
-		console.log("tabCreated " + message.title + " id "+ message.ID + "url " + message.url + " delivered to this frame " );
+		console.log("tabCreated " + message.title + " id "+ message.ID + " url " + message.url + " delivered to this frame " );
 
 		let a = document.getElementById(String(message.ID));
-		console.log("tabCreated code in content script ran, tabs found", a);
 		let title = "";
+		
 		//https://stackoverflow.com/questions/5629684/how-can-i-check-if-an-element-exists-in-the-visible-dom
-
 		if(a == null){ 
 			//ANDROID only BUG: the index property is the same for all tabs
 			// Array [ {…}, {…} ]
@@ -528,12 +512,19 @@ function handleMessagesFromBackgroundScript(message){
 			//So the fix is to listen for all rightlick events on a page (and then say the next opened tab is from that)
 				//So, the next opened tab is always opened to the right of the active tab, unless the user opens rightlick menu on one of the tabs in tab bar, then the activeTab is changed to that tabs id, so the new tab is open right next to it
 
-				console.log("tab Created RAN in openNewTab.js, got data:", message);
+				console.log("tabCreated code in openNewTab.js ran, tabElement DOES NOT EXIST, message:", message.tabOrderMods);
+				//message looks like this: {
+					// ID: "10053"
+					// action: "tabCreated"
+					// title: undefined
+					// url: "about:blank"
+					// }
+				//=> now that I actually added a tabordermodifications sync to this event tabordermodifications it computed in background.js), it has the tabOrderMods property
 				let config = {
 					"id": message.ID,
 					"title": message.title,
 					"adress": message.url,
-					"appendAfterId": message.activeTabID,
+					"appendAfterId": message.tabOrderMods[message.ID],
 					"favicon": message.iconUrl,
 					"selectThisTAB": false, //handled by message[i].id == message.adresat check
 					"scrollTabIntoView": false
@@ -543,6 +534,7 @@ function handleMessagesFromBackgroundScript(message){
 			//doesn't scroll where wadocument.getElementById("w" + String(message.ID)).scrollIntoView({behavior: "smooth", block: "end", inline: "end"});
 		}else{
 			//tab element exists
+			console.log("tabCreated code in openNewTab.js ran, tabElement exists:", a);
 			//a.style.background = "red"; 
 			if("url" in message){
 				a.href = message.url;
@@ -669,14 +661,12 @@ function displayButtons(deviceOrientation){
   	for (var i = 0; i < vertical.length; i++) {
   		console.log("removing hidden attribute from ", document.getElementById(vertical[i])); 
   		//overwriting styles using style.display is actually a bad idea, not reliable; adding and removing hidden class in class attr is reliable .hidden{ display: none }
-  		//document.getElementById(vertical[i]).style.display = "block";
   		document.getElementById(vertical[i]).classList.remove("hidden");
   	}
   }else if(deviceOrientation == "landscape-primary" || deviceOrientation == "landscape-secondary"){
   	let horizontal = window.showButtons.horizontal;
   	for (var i = 0; i < horizontal.length; i++) {
   		console.log("removing hidden attribute from ", document.getElementById(horizontal[i]));
-  		//document.getElementById(horizontal[i]).style.display = "block";
   		document.getElementById(horizontal[i]).classList.remove("hidden");
   	}
   }
@@ -697,22 +687,11 @@ screen.orientation.onchange = (event) => {
 	console.log("showButtons", showButtons) //in this standard event works without window prefix
 	//first hide the buttons so we can then show the ones user has selected
 	if(showButtons !== undefined){
-		//Toggling buttons visibility using style.display none and block was buggy,
-		//so the new implementation add and removes the hidden class
-		// document.getElementById("backButton").style.display = "none";
-	// 	document.getElementById("forwardButton").style.display = "none";
-	// 	document.getElementById("reloadButton").style.display = "none";
 		hideButtons();
 	}else{
-		// document.getElementById("backButton").style.display = "block";
-		// document.getElementById("forwardButton").style.display = "block";
-		// document.getElementById("reloadButton").style.display = "block";
-
-		//show all buttons
 		document.getElementById("backButton").classList.remove("hidden");
 		document.getElementById("forwardButton").classList.remove("hidden");
 		document.getElementById("reloadButton").classList.remove("hidden");
-		//return;
 	}
 	displayButtons(deviceOrientation);
 
