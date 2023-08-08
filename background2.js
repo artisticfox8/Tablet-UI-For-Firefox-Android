@@ -388,6 +388,8 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 	changedStuff.title = tab.title;
 	changedStuff.url = tab.url;
 
+	//what if I send tabOrderModifications always and everywhere?
+	//=> That's what I do, but this part is not about sending, but about adding more keys
 	if(String(tabId) in tabOrderModifications){
 		//tabId already, there, tab exists
 		//the only data updated are the title and url properties
@@ -401,11 +403,17 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 		// }
 		tabOrderModifications[tabId] = activeTabId
 	}
+
+
+	changedStuff.tabOrderMods = tabOrderModifications;
+
 	browser.tabs.query({}).then(function(tabs){
 
-		TabsObject = tabs;
+		TabsObject = tabs;	
+		//ahaaa => this is a sync of the properties to TabsObject, which is sent to the newly loaded tab, but not a sync of the property to changedStuff, which I now want => added changedStuff.tabOrderMods = tabOrderModifications; a few lines above
 		TabsObject.favicons = faviconCache;
 		TabsObject.tabOrderMods = tabOrderModifications;
+		console.log("copak jsou tabOrderModifications undefined?: ", tabOrderModifications);
 		TabsObject.settings = SettingsObject;
 
 		console.log(changeInfo); 
