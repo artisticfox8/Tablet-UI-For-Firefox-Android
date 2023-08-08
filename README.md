@@ -16,6 +16,12 @@ This add-on re-implements the tab bar from desktop we all love, on Android table
 You can see screenshots at: https://addons.mozilla.org/en-US/firefox/addon/tablet-ui-for-firefox/
 
 ## Changelog
+**v2.5 fixed inconsistent tab ordering when a user duplicates a tab**
+
+Previosly the correct order of tabs, with the newly duplicated tab being to the right of the original tab, was only shown on that newly duplicated tab. On all other tabs, the newly duplicated tab was shown at the end of the tab list.
+
+Now it all works correctly and consistenly, the newly duplicated tab appears to the right (is the right neighbor of) the original tab on all tabs, is inserted at the correct index.
+
 **v2.4 fixed full screen video on m.youtube.com with tab bar position top**
 
 Previously when users set the tab bar to appear on top, the video as well as some Youtube player controls were not visible on screen.
