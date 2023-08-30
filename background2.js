@@ -9,6 +9,7 @@ var tabOrderModifications = {}; //{tabId: insertAfterId}
 //both trueActiveTabId and activeTabId have their place
 var activeTabId = 0;
 var trueActiveTabId = 0; //always the real tab active tab id
+let previousActiveTabId = 0
 
 var tabBarPosition = 0; //same as let tabBarPosition in openNewTab
 
@@ -147,6 +148,7 @@ function handleGetFaviconURLResponse(request, sender, sendResponse, url){
 		if(newTabURL == undefined){
 			throw new Error("newTabURL is undefined wtf");
 		}
+		previousActiveTabId = sender.tab.id
 		browser.tabs.create({url: newTabURL}); //"https://www.google.com"
 	}
 
@@ -343,7 +345,6 @@ browser.tabs.onActivated.addListener(activeTabChanged);
 //but not when tab is closed
 
 
-//TODO: TEST NEW REWRITE OF shareWithContentScripts
 function shareWithContentScripts(tabId, changeInfo, tab){
 	//same as sendPositionModMessageToContent
 	//SPEEDS IT UP A LOT! THE TAB BAR ISN'T JUMPING AT ALL (TESTED ON WIKIPEDIA)
@@ -401,7 +402,11 @@ function shareWithContentScripts(tabId, changeInfo, tab){
 		// if(tabId != activeTabId){
 		// 	tabOrderModifications[tabId] = activeTabId;
 		// }
-		tabOrderModifications[tabId] = activeTabId
+		if(SettingsObject.placeNewTab == "insertAfterCurrent"){
+			tabOrderModifications[tabId] = previousActiveTabId;
+		}else{
+			tabOrderModifications[tabId] = activeTabId
+		}
 	}
 
 
