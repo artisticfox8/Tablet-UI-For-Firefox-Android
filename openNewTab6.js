@@ -3,7 +3,7 @@ var thisTabsTabId = 0;
 var translateYhackOn = true;
 let settingsObject = {}; //from var settingsObject because of https://stackoverflow.com/questions/30469755/why-a-variable-defined-global-is-undefined
 var tabFontSize = "0.9rem"; //equals 14.4px
-//FIXED: sometimes buttons appear when screen rotation event is not sent to all tabs
+
 //default showButtons settings (to avoid undefined)
 var showButtons = {
 	horizontal: ["backButton", "forwardButton", "reloadButton"],
@@ -13,9 +13,6 @@ settingsObject.to = "left";
 
 var settingsTabURL = "";
 var settingsTabId;
-//FIXED: TELL ALL THE OTHER TABS ABOUT THE ORIENTATIONCHANGE EVENT
-
-//FIXED by properly setting font size on all elements: TODO: FIX FONT SIZE JUMPING (after a different size was set by user)
 
 function applySelectedStyle(wrapperId){ //for example w22
 	let tab = document.getElementById(wrapperId);
@@ -25,19 +22,6 @@ function applySelectedStyle(wrapperId){ //for example w22
 	if(tab == null){
 		throw new TypeError("can't access property 'classList', tab with id '" + wrapperId + "' is null");
 	}
-
-	//let styles = "background:#b1b1b9;border-color: transparent;font-size:" + tabFontSize;
-	//I could use Object.assign(element.style, styles) if I had more styles (https://stackoverflow.com/questions/3968593/how-can-i-set-multiple-css-styles-in-javascript)
-	//TLDR: OBJECT.ASSIGN doesn't work in Firefox for CSS (it works only in Chrome nonstandard implementation). SRC: https://stackoverflow.com/questions/46077237/how-to-solve-css2properties-doesnt-have-an-indexed-property-setter-for-0-erro
-	// try{
-	// 	alert(tab === "null")
-	// 	Object.assign(tab.style, styles);
-	// }catch(error){
-	// 	console.log(wrapperId, error.message);	//tab co v tab baru určitě je (shodou okolností nově active tab) podle tohoto tam není 
-	// }
-
-	//TAKŽE KLASICKY
-	//klasika funguje, krása
 	tab.classList.add("selected");
 }
 
@@ -46,10 +30,6 @@ function applySelectedStyle(wrapperId){ //for example w22
 //make it on both the original placement on tabSwitch and tabs.onActivated so it covers all cases and is fast 
 	//they would duplicate each other except for tab close, page popups, browsers native tabswitcher and swiping on the browser addressbar
 		//the second call could cause jumps if the user already scrolled between the two messages, but OTHER than that it should work
-
-
-//FIXED: removed the focusout event from document, since it was buggy (supposedly removing the button before the click event listener even fired; when I removed that in favor of blur event on the button, it started to work 
-//FIXED by using inline styles: Interestingly, the v1 UI with injecting stylesheets does not work on Windows (v1 official version tested), but it does on Android (also tested v1 official version from the addon store)
 
 // added UI for disabling the transform translateY hack on pages (causes cookies prompts on pages to shift out of view (so you can't consent and click them))
 //this UI will be right click on the plus tab
@@ -65,7 +45,6 @@ document.getElementById("plus").addEventListener("contextmenu", function(e){
 		document.getElementById("plus").insertAdjacentElement("beforebegin", button);
 
 		button.addEventListener("click", function(){
-		//document.body.style.removeProperty("transform"); //aha, nefunguje to proto, že je to v iframe
 		browser.runtime.sendMessage({action:"translateYhackOff"}).then(function(e){
 			button.remove();
 			document.getElementById("plusPicture").style.rotate = "0deg"
@@ -78,26 +57,16 @@ document.getElementById("plus").addEventListener("contextmenu", function(e){
 		document.getElementById("plus").insertAdjacentElement("beforebegin", button);
 
 		button.addEventListener("click", function(){
-			//document.body.style.removeProperty("transform"); //aha, nefunguje to proto, že je to v iframe
 			browser.runtime.sendMessage({action:"translateYhackOn"}).then(function(e){
 				button.remove();
 				document.getElementById("plusPicture").style.rotate = "0deg"
 				translateYhackOn = true;
 			});
-		
 		});
+
 	}
 
 });
-
-// document.addEventListener("focusout",function(){ //fired immediately when the button is CLICKED on Windows, not only when you click anything else
-// 	//NO: also not reliable: maybe use the blur event on the popup instead
-// 	let menu = document.getElementById("menuItem");
-// 	if(menu != null){
-// 		//menu.remove();
-// 	}	
-// });
-
 
 //								{id: id, title: title, adress: url, appendAfterId: id, favicon: url, selectThisTAB: true/false, scrollTabIntoView: true/false}
 function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTAB, scrollIntoView
@@ -139,13 +108,7 @@ function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTA
 		if(e.title !== undefined){
 			if(e.title.length < 7){
 				//this hack because display flex on wrapperdiv breaks the tab bar layout completely
-
-			/*				Since none of the other answers explain why your code doesn’t work:
-			 in a nutshell, it’s because innerText represents the rendered text on a page, 
-			 which means applying the element’s white-space rules.
-			  The effect in your case is that surrounding whitespace is stripped off. – 
-			Konrad Rudolph*/
-			//comment from https://stackoverflow.com/questions/47768523/empty-spaces-are-ignored-by-the-innertext-property
+				//for it to work, textContent is used: https://stackoverflow.com/questions/47768523/empty-spaces-are-ignored-by-the-innertext-property
 				let text = e.title + " ".repeat(8 - e.title.length)
 				tabElement.textContent = text;
 			}else{
@@ -196,26 +159,16 @@ function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTA
 		tabElement.addEventListener ("click", function(e) {
 			e.preventDefault(); //so the browser doesn't navigate to that link onclick
 
-	  	//add tab bar scroll state sync (the idea works well on a landscape orientation, but it doesn't (I think, not tested on mobile) on a narrow screen (portrait orientation), where the tab switched to is fully scrolled into view )
+	  	//add tab bar scroll state sync
 	  	let tabBarPosition = document.getElementById("tabcontainer").scrollLeft;
 	  	let sending = browser.runtime.sendMessage({action: "switchTab", tabID: tabElement.id, scrolled: tabBarPosition});
 
-	  	//try{
-	  		//switch from CSS text to setting properties one by one because the cssText property overrides a custom font size selected by the user
-	  		//font sizes not jumping good
-	  		
-	  		//lets check if activeTabId is always 0 on this tab => it is (until switchedToThisTab is ran)
-	  		//so lets assign activeTabId the value of thisTabsTabId as an initial value
-	  		console.log("eEeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEEEEEEEEE", activeTabId);
+	  	
+	  	console.log("the value of activeTabId is:", activeTabId);
 
-	  		let wrapper = document.getElementById("w" + activeTabId); //"w" + activeTabId
-	  		wrapper.classList.remove("selected");
-
-	  	// }catch(error){
-	  	// 	console.error(error);
-	  	// }
-
-	  console.log("tabElement.id", tabElement.id);
+	  	let wrapper = document.getElementById("w" + activeTabId); //"w" + activeTabId
+	  	wrapper.classList.remove("selected");
+	  	console.log("tabElement.id", tabElement.id);
 
 		});
 
@@ -226,6 +179,7 @@ function createTAB(e){ //id, title, adress, appendAfterId, favicon, selectThisTA
 			let switchToTabId = "";
 			let a = ""
 			if(document.getElementById("w" + e.id).classList.contains("selected")){
+				//switching to let fixed that:
 				//Either with or without window prefix: Uncaught TypeError: can't access property "to", settingsObject is undefined
 				//So called hoisting https://stackoverflow.com/questions/30469755/why-a-variable-defined-global-is-undefined
 				if(settingsObject.to == "left"){
@@ -358,12 +312,10 @@ function handleResponse(message){ //response to getAllTabs
 				console.warn("tab id", message[i].id,"adresat id", message.adresat);
 				if(message[i].id == message.adresat){
 					//the tab was just created
-					//alert("r");
 					console.log("wrapper with id w" + message.adresat + " to be selected");
 					applySelectedStyle("w" + message.adresat);
 				}
 				console.log('%c ****** RUN ACTUALLY ENDED IN ASYNC ****** ', 'background: #222; color: #bada55');
-				//applySelectedStyle("w" + String(message.adresat)); //replaced by selectThisTAB=true paramater
 				//document.getElementById("w" + String(message.adresat)).scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"}); //replaced by scrollIntoView=true paramater
 			});
 		}else{
@@ -383,7 +335,6 @@ function handleResponse(message){ //response to getAllTabs
 				console.log("wrapper with id w" + message.adresat + "to be selected");
 				applySelectedStyle("w" + String(message.adresat));
 			}
-			//applySelectedStyle("w" + String(message.adresat)); //replaced by selectThisTAB=true paramater
 			//document.getElementById("w" + String(message.adresat)).scrollIntoView({behavior: "smooth", block: "end", inline: "nearest"});//replaced by scrollIntoView=true paramater
 		}			
 				
@@ -402,12 +353,11 @@ function handleResponse(message){ //response to getAllTabs
 }
 
 
-let sending = browser.runtime.sendMessage({action: "getAllTabs"}); //remade to json //message to background script
+let sending = browser.runtime.sendMessage({action: "getAllTabs"}); //message to background script
 sending.then(handleResponse);
 
 function handleMessagesFromBackgroundScript(message){
 	if(message.action === "phoneRotated"){
-		//alert(message.orientation);
 		hideButtons();
 		displayButtons(message.orientation);
 	}
@@ -535,7 +485,6 @@ function handleMessagesFromBackgroundScript(message){
 		}else{
 			//tab element exists
 			console.log("tabCreated code in openNewTab.js ran, tabElement exists:", a);
-			//a.style.background = "red"; 
 			if("url" in message){
 				a.href = message.url;
 			}
@@ -645,7 +594,7 @@ function handleSettings(settings){
 		if("fontSize" in settings){
 			window.tabFontSize = settings.fontSize + "px";
 		}
-			// operátor || vlastně nefungoval
+			//zase hoisting I guess, switching to let fixed it: operátor || vlastně nefungoval
 		 //window.tabFontSize = settings.fontSize || "0.9rem"; //tady se to možná při response na getAllTabs resetuje na 0.9rem (protože pathway updateSettings má svoji window.tabFontSize = message.settings.fontSize + "px")
 		makeShowButtonsObject(settings);
 		let orientation = screen.orientation.type;
@@ -677,8 +626,7 @@ function hideButtons(){
   document.getElementById("reloadButton").classList.add("hidden");
 }
 
-//FIX the buttons having display:none but still displaying (look at: https://stackoverflow.com/questions/20663712/css-display-none-not-working)
-//IDEA: use CSS classes (add a .hidden{ display:none} to CSS and add or remove the hidden class)
+//FIXED the buttons having display:none but still displaying by using CSS classes (add a .hidden{ display:none} to CSS and add or remove the hidden class)
 screen.orientation.onchange = (event) => {
 	console.log(event.target.type)
 	let deviceOrientation = String(event.target.type);
